@@ -10,17 +10,17 @@
 </head>
 
 <body>
-<h1>Dynamic Video Sequence</h1>
-<video width="640" height="480" controls>
-    <source th:src="@{/CoolVideo.mp4}" type="video/mp4">
-    Blep
-</video>
-<!--<div th:each="videoUrl : ${videoUrls}">-->
-<!--    <video width="320" height="240" controls>-->
-<!--        <source th:src="${videoUrl}" type="video/mp4">-->
-<!--        Your browser does not support the video tag.-->
-<!--    </video>-->
-<!--</div>-->
+<h1>GOP list for: </h1>
+<!--<video width="640" height="480" controls>-->
+<!--    <source th:src="@{/CoolVideo.mp4}" type="video/mp4">-->
+<!--    Blep-->
+<!--</video>-->
+<div th:each="fileName : ${videoFileNames}">
+    <video width="320" height="240" controls>
+        <source th:src="@{/__${fileName}__}" type="video/mp4">
+        Your browser does not support the video tag.
+    </video>
+</div>
 </body>
 </html>
 

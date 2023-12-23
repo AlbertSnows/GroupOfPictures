@@ -81,13 +81,7 @@ public class VideoController {
                 .addArguments("-c:v", "copy")
                 .addArguments("-c:a", "copy")
                 .setOverwriteOutput(true)
-//                .addArgument("-y")
-
-//                .addArguments("-vf", )
-//                .addArguments("setpts", "PTS-STARTPTS")
-//                .addArguments("asetpts", "PTS-STARTPTS")
-//                .addArguments("-vf", "select=\"between(n\\,87\\,206),setpts=PTS-STARTPTS\"")
-//                .addArguments("-af", "aselect=\"between(n\\,87\\,206),asetpts=PTS-STARTPTS\"")
+                //todo: change this to make a directory in the form resources/source/<videoname>/1, 2, ...
                 .addOutput(UrlOutput.toPath(Path.of("src/main/resources/source/CoolVideoClip.mp4")));
         try {
             //todo: doesn't work in debugger mode?
@@ -95,12 +89,6 @@ public class VideoController {
         } catch (Exception ex) {
             System.out.println("problem waiting...");
         }
-
-//                .executeAsync()
-//                .toCompletableFuture()
-//                .complete()
-                ;
-//        while(!outcome.isDone()) {}
 
         try {
             var clipFilePath = new ClassPathResource("source/CoolVideoClip.mp4");
@@ -118,14 +106,57 @@ public class VideoController {
 
     @GetMapping("/{videoName}/group-of-pictures")
     public String getFramesAsVideos(
-//            @PathVariable("videoName") String name
+            @PathVariable("videoName") String name,
             @NotNull Model model
     ) {
         // fnf, fnp
         // indexes not possible { list ...}
         // return html doc
-        List<VideoSource> videoSourceList = List.of(new VideoSource());
-        model.addAttribute("videoURLs", videoSourceList);
+        var dataForFrames = videoRead.videoSource.videoProbe
+                .setShowFrames(true)
+                .execute();
+        JsonArray frameList = (JsonArray) dataForFrames.getData().getValue("frames");
+        IntPredicate isIFrame = frameIndex -> {
+            var frameData = (JsonObject) frameList.get(frameIndex);
+            return frameData.get("pict_type").equals("I");
+        };
+        var iFrameIndexes = IntStream
+                .rangeClosed(0, frameList.size()-1)
+                .filter(isIFrame)
+                .boxed()
+                .collect(Collectors.toCollection(TreeSet::new));
+        var start = Integer.parseInt("87");
+        var nextIFrame = iFrameIndexes.higher(start);
+        var end = nextIFrame - 1;
+        var startFrameData = frameList.get(start);
+        var endFrameData = frameList.get(end);
+        var pathToVideo = Paths.get("src/main/resources/source/CoolVideo.mp4");
+        var videoData = FFmpeg.atPath()
+                .addInput(UrlInput.fromPath(pathToVideo));
+        var next = videoData
+                .addArguments("-ss", "2830ms")
+                .addArguments("-to", "6867ms")
+                .addArguments("-c:v", "copy")
+                .addArguments("-c:a", "copy")
+
+                .addOutput(UrlOutput.toPath(Path.of("src/main/resources/static/CoolVideoClip.mp4")));
+        try {
+            //todo: doesn't work in debugger mode?
+            next.execute(); //.wait();
+        } catch (Exception ex) {
+            System.out.println("problem waiting...");
+        }
+
+        try {
+            var clipFilePath = new ClassPathResource("source/CoolVideoClip.mp4");
+            var x = clipFilePath.exists();
+            var clipFile = clipFilePath.getFile();
+            var videoBytes = Files.readAllBytes(clipFile.toPath());
+        } catch (Exception ex) {
+            System.out.println("problem sending response...");
+        }
+        List<String> videoNames = List.of("CoolVideoClip.mp4");
+        model.addAttribute("videoFileNames", videoNames);
         return "video_sequence";
     }
 }
