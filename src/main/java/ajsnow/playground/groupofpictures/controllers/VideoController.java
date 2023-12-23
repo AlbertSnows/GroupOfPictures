@@ -1,7 +1,6 @@
 package ajsnow.playground.groupofpictures.controllers;
 
 import ajsnow.playground.groupofpictures.services.video.VideoRead;
-import com.fasterxml.jackson.databind.JsonNode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
@@ -20,9 +19,11 @@ public class VideoController {
         this.videoRead = videoRead;
     }
 
-    @GetMapping("/{videoId}/group-of-pictures.json")
-    public ResponseEntity<Map<String, String>> recordReceipt(@RequestBody JsonNode receipt) {
-        return new ResponseEntity<>(HttpStatusCode.valueOf(501));
+//    @GetMapping("/{videoId}/group-of-pictures.json")
+    @GetMapping("/test")
+    public HttpStatusCode recordReceipt() {
+        var x = videoRead.video;
+        return HttpStatusCode.valueOf(501);
     }
 
 
