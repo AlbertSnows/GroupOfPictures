@@ -1,21 +1,24 @@
 package ajsnow.playground.groupofpictures.controllers;
 
 import ajsnow.playground.groupofpictures.services.video.VideoRead;
-import com.github.kokorin.jaffree.ffprobe.data.ProbeData;
+import com.github.kokorin.jaffree.ffmpeg.Filter;
+import com.github.kokorin.jaffree.ffmpeg.UrlOutput;
 import com.grack.nanojson.JsonArray;
 import com.grack.nanojson.JsonObject;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.*;
 import java.util.function.IntPredicate;
-import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import java.util.stream.Stream;
 
 @RestController
 @RequestMapping("/videos")
@@ -43,13 +46,14 @@ public class VideoController {
 
 
     @GetMapping("/{videoName}/group-of-pictures/{groupIndex}")
-    public HttpStatusCode streamGroupVideo(@PathVariable("videoName") String name,
-                                      @PathVariable("groupIndex") @NotNull String indexName) {
+    public ResponseEntity<ByteArrayResource> streamGroupVideo(@PathVariable("videoName") String name,
+                                                              @PathVariable("groupIndex") @NotNull String indexName) {
+        // fnf, fnp, index not found, index not parsable
+        // give data
         var dataForFrames = videoRead.video.videoProbe
                 .setShowFrames(true)
                 .execute();
         JsonArray frameList = (JsonArray) dataForFrames.getData().getValue("frames");
-//        Stream<JsonObject> frameStream = IntStream.range(0, frameList.size()).mapToObj(frameList::getObject);
         IntPredicate isIFrame = frameIndex -> {
             var frameData = (JsonObject) frameList.get(frameIndex);
             return frameData.get("pict_type").equals("I");
@@ -62,24 +66,46 @@ public class VideoController {
         var start = Integer.parseInt(indexName.split("\\.mp4")[0]);
         var nextIFrame = iFrameIndexes.higher(start);
         var end = nextIFrame - 1;
+        var startFrameData = frameList.get(start);
+        var endFrameData = frameList.get(end);
+        var next = videoRead.video.videoData
+                .addArguments("-ss", "2830ms")
+                .addArguments("-to", "6867ms")
+                .addArguments("-c:v", "copy")
+                .addArguments("-c:a", "copy")
+                .setOverwriteOutput(true)
+//                .addArgument("-y")
 
-        var x = new TreeSet<>(iFrameIndexes)
-//                .toArray()
-//                .collect(HashSet::new)
+//                .addArguments("-vf", )
+//                .addArguments("setpts", "PTS-STARTPTS")
+//                .addArguments("asetpts", "PTS-STARTPTS")
+//                .addArguments("-vf", "select=\"between(n\\,87\\,206),setpts=PTS-STARTPTS\"")
+//                .addArguments("-af", "aselect=\"between(n\\,87\\,206),asetpts=PTS-STARTPTS\"")
+                .addOutput(UrlOutput.toPath(Path.of("src/main/resources/source/CoolVideoClip.mp4")));
+        try {
+            next.execute(); //.wait();
+        } catch (Exception ex) {
+            System.out.println("problem waiting...");
+        }
+
+//                .executeAsync()
+//                .toCompletableFuture()
+//                .complete()
                 ;
-        // frame id -> data
-        // ask for I frame 87
-        // what frame do I stop just before?
-        //
+//        while(!outcome.isDone()) {}
 
-
-//                frameStream.filter(isIFrame).toList();
-//        var startFrame = iFrameIndexes.toArray()[)];
-//        var videoSnippet = videoRead.video.videoData
-//                .
-        // fnf, fnp, index not found, index not parsable
-        // give data
-        return HttpStatusCode.valueOf(501);
+        try {
+            var clipFilePath = new ClassPathResource("source/CoolVideoClip.mp4");
+            var x = clipFilePath.exists();
+            var clipFile = clipFilePath.getFile();
+            var videoBytes = Files.readAllBytes(clipFile.toPath());
+            return ResponseEntity.ok()
+                    .header("Content-Disposition", "attachment; filename=\"CoolVideoClip.mp4\"")
+                    .body(new ByteArrayResource(videoBytes));
+        } catch (Exception ex) {
+            System.out.println("problem sending response...");
+        }
+        return ResponseEntity.internalServerError().body(new ByteArrayResource(new byte[]{}));
     }
 
     @GetMapping("/{videoName}/group-of-pictures")
