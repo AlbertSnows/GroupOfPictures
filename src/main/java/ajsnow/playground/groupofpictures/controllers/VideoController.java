@@ -1,8 +1,11 @@
 package ajsnow.playground.groupofpictures.controllers;
 
 import ajsnow.playground.groupofpictures.services.video.VideoRead;
+import com.github.kokorin.jaffree.ffmpeg.FFmpeg;
 import com.github.kokorin.jaffree.ffmpeg.Filter;
+import com.github.kokorin.jaffree.ffmpeg.UrlInput;
 import com.github.kokorin.jaffree.ffmpeg.UrlOutput;
+import com.github.kokorin.jaffree.ffprobe.FFprobe;
 import com.grack.nanojson.JsonArray;
 import com.grack.nanojson.JsonObject;
 import org.jetbrains.annotations.NotNull;
@@ -15,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.function.IntPredicate;
 import java.util.stream.Collectors;
@@ -68,7 +72,10 @@ public class VideoController {
         var end = nextIFrame - 1;
         var startFrameData = frameList.get(start);
         var endFrameData = frameList.get(end);
-        var next = videoRead.video.videoData
+        var pathToVideo = Paths.get("src/main/resources/source/CoolVideo.mp4");
+        var videoData = FFmpeg.atPath()
+                .addInput(UrlInput.fromPath(pathToVideo));
+        var next = videoData
                 .addArguments("-ss", "2830ms")
                 .addArguments("-to", "6867ms")
                 .addArguments("-c:v", "copy")
@@ -83,6 +90,7 @@ public class VideoController {
 //                .addArguments("-af", "aselect=\"between(n\\,87\\,206),asetpts=PTS-STARTPTS\"")
                 .addOutput(UrlOutput.toPath(Path.of("src/main/resources/source/CoolVideoClip.mp4")));
         try {
+            //todo: doesn't work in debugger mode?
             next.execute(); //.wait();
         } catch (Exception ex) {
             System.out.println("problem waiting...");
