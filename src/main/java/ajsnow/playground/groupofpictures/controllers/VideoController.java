@@ -3,10 +3,7 @@ package ajsnow.playground.groupofpictures.controllers;
 import ajsnow.playground.groupofpictures.services.video.VideoRead;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatusCode;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.Map;
 
 @RestController
 @RequestMapping("/videos")
@@ -19,21 +16,25 @@ public class VideoController {
         this.videoRead = videoRead;
     }
 
-//    @GetMapping("/{videoId}/group-of-pictures.json")
-    @GetMapping("/test")
-    public HttpStatusCode recordReceipt() {
+    @GetMapping("/{videoName}")
+    public HttpStatusCode recordReceipt(@PathVariable("videoName") String name) {
+        // cases
+        // file not found 404
+        // file not parsable
+        // file parsable, give data
         var x = videoRead.video;
         return HttpStatusCode.valueOf(501);
     }
 
 
     @GetMapping("/{videoName}/group-of-pictures/{groupIndex}")
-    public ResponseEntity<Map<String, String>> listAllData(String name, String index) {
-        return new ResponseEntity<>(HttpStatusCode.valueOf(501));
+    public HttpStatusCode listAllData(@PathVariable("videoName") String name,
+                                      @PathVariable("groupIndex") String index) {
+        return HttpStatusCode.valueOf(501);
     }
 
     @GetMapping("/{videoName}/group-of-pictures")
-    public ResponseEntity<Map<String, String>> getPoints(@PathVariable String providedReceiptID) {
-        return new ResponseEntity<>(HttpStatusCode.valueOf(501));
+    public HttpStatusCode getPoints(@PathVariable("videoName") String name) {
+        return HttpStatusCode.valueOf(501);
     }
 }

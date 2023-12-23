@@ -10,21 +10,13 @@ import java.util.function.Consumer;
 
 @Component
 public class Video {
-    private FFprobe video;
+    private FFprobeResult video;
     public Video() {
-        Consumer<String> execVid = path -> {
-            var pathToVideo = Paths.get("src/main/resources/source/CoolVideo.mp4");
-            video = FFprobe.atPath()
-                    .setShowStreams(true)
-                    .setInput(pathToVideo);
-            var fileExists = Files.exists(pathToVideo);
-            try {
-                var x = video.execute();
-            } catch (Exception ex) {
-                System.out.println(ex.getCause());
-            }
-        };
-//                .execute();
-        System.out.println("video ingested...");
+        var pathToVideo = Paths.get("src/main/resources/source/CoolVideo.mp4");
+        video = FFprobe.atPath()
+                .setShowStreams(true)
+                .setInput(pathToVideo)
+                .execute();
+//        System.out.println("Video ingested...");
     }
 }
