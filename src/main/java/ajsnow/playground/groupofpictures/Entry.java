@@ -4,10 +4,10 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class GroupofpicturesApplication {
+public class Entry {
 
 	public static void main(String[] args) {
-		SpringApplication.run(GroupofpicturesApplication.class, args);
+		SpringApplication.run(Entry.class, args);
 	}
 
 }
