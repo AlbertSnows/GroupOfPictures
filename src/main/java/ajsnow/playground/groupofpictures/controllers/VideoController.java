@@ -1,19 +1,19 @@
 package ajsnow.playground.groupofpictures.controllers;
 
+import ajsnow.playground.groupofpictures.data.VideoSource;
 import ajsnow.playground.groupofpictures.services.video.VideoRead;
 import com.github.kokorin.jaffree.ffmpeg.FFmpeg;
-import com.github.kokorin.jaffree.ffmpeg.Filter;
 import com.github.kokorin.jaffree.ffmpeg.UrlInput;
 import com.github.kokorin.jaffree.ffmpeg.UrlOutput;
-import com.github.kokorin.jaffree.ffprobe.FFprobe;
 import com.grack.nanojson.JsonArray;
 import com.grack.nanojson.JsonObject;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.ClassPathResource;
-import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
 import java.nio.file.Files;
@@ -24,7 +24,7 @@ import java.util.function.IntPredicate;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-@RestController
+@Controller
 @RequestMapping("/videos")
 public class VideoController {
     @Autowired
@@ -42,7 +42,7 @@ public class VideoController {
         // file not parsable
         // file parsable, give data
         // remove cast
-        var frameData = videoRead.video.videoProbe
+        var frameData = videoRead.videoSource.videoProbe
                 .setShowFrames(true)
                 .execute();
         return ResponseEntity.ok((JsonArray) frameData.getData().getValue("frames"));
@@ -54,7 +54,7 @@ public class VideoController {
                                                               @PathVariable("groupIndex") @NotNull String indexName) {
         // fnf, fnp, index not found, index not parsable
         // give data
-        var dataForFrames = videoRead.video.videoProbe
+        var dataForFrames = videoRead.videoSource.videoProbe
                 .setShowFrames(true)
                 .execute();
         JsonArray frameList = (JsonArray) dataForFrames.getData().getValue("frames");
@@ -117,10 +117,15 @@ public class VideoController {
     }
 
     @GetMapping("/{videoName}/group-of-pictures")
-    public HttpStatusCode getFramesAsVideos(@PathVariable("videoName") String name) {
+    public String getFramesAsVideos(
+//            @PathVariable("videoName") String name
+            @NotNull Model model
+    ) {
         // fnf, fnp
         // indexes not possible { list ...}
         // return html doc
-        return HttpStatusCode.valueOf(501);
+        List<VideoSource> videoSourceList = List.of(new VideoSource());
+        model.addAttribute("videoURLs", videoSourceList);
+        return "video_sequence";
     }
 }
