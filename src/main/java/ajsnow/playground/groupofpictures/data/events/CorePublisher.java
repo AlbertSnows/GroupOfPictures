@@ -11,13 +11,13 @@ import java.util.function.Consumer;
 @Component
 public class CorePublisher {
     @Autowired
-    private final ApplicationEventPublisher applicationEventPublisher;
+    private final ApplicationEventPublisher publisher;
 
     public CorePublisher(ApplicationEventPublisher applicationEventPublisher) {
-        this.applicationEventPublisher = applicationEventPublisher;
+        this.publisher = applicationEventPublisher;
     }
 
-    public void publish(@NotNull Consumer<ApplicationEventPublisher> f) {
-        f.accept(applicationEventPublisher);
+    public void publish(@NotNull Consumer<ApplicationEventPublisher> eventHolder) {
+        eventHolder.accept(publisher);
     }
 }
