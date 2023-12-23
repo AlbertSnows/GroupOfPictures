@@ -30,11 +30,16 @@ public class VideoController {
     @GetMapping("/{videoName}/group-of-pictures/{groupIndex}")
     public HttpStatusCode listAllData(@PathVariable("videoName") String name,
                                       @PathVariable("groupIndex") String index) {
+        // fnf, fnp, index not found, index not parsable
+        // give data
         return HttpStatusCode.valueOf(501);
     }
 
     @GetMapping("/{videoName}/group-of-pictures")
     public HttpStatusCode getPoints(@PathVariable("videoName") String name) {
+        // fnf, fnp
+        // indexes not possible { list ...}
+        // return html doc
         return HttpStatusCode.valueOf(501);
     }
 }
