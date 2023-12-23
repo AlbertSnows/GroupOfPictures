@@ -10,13 +10,11 @@ import java.util.function.Consumer;
 
 @Component
 public class Video {
-    private FFprobeResult video;
+    public final FFprobe videoProbe;
     public Video() {
         var pathToVideo = Paths.get("src/main/resources/source/CoolVideo.mp4");
-        video = FFprobe.atPath()
-                .setShowStreams(true)
-                .setInput(pathToVideo)
-                .execute();
+        videoProbe = FFprobe.atPath()
+                .setInput(pathToVideo);
 //        System.out.println("Video ingested...");
     }
 }

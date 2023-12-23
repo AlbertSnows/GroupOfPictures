@@ -31,7 +31,7 @@ public class ErrorsController implements ErrorController {
 						webRequest, ErrorAttributeOptions.defaults());
 		errorAttributesMap.put("message", "This is a intentional JSON error response. " +
 						"If the HTTP status is 400, double check your request. " +
-						"This response should also include an brief error description that may help ");
+						"This response may also include an brief error description that may help ");
 //		logger.info(errorAttributesMap.toString()); // hrmmm...
 		HttpStatus status = HttpStatus.valueOf((int) errorAttributesMap.get("status"));
 		return new ResponseEntity<>(errorAttributesMap, status);

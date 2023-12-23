@@ -1,8 +1,11 @@
 package ajsnow.playground.groupofpictures.controllers;
 
 import ajsnow.playground.groupofpictures.services.video.VideoRead;
+import com.github.kokorin.jaffree.ffprobe.data.ProbeData;
+import com.grack.nanojson.JsonArray;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatusCode;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -17,13 +20,15 @@ public class VideoController {
     }
 
     @GetMapping("/{videoName}")
-    public HttpStatusCode recordReceipt(@PathVariable("videoName") String name) {
+    public ResponseEntity<JsonArray> recordReceipt(@PathVariable("videoName") String name) {
         // cases
         // file not found 404
         // file not parsable
         // file parsable, give data
-        var x = videoRead.video;
-        return HttpStatusCode.valueOf(501);
+        var x = videoRead.video.videoProbe
+                .setShowFrames(true)
+                .execute();
+        return ResponseEntity.ok((JsonArray) x.getData().getValue("frames"));
     }
 
 
