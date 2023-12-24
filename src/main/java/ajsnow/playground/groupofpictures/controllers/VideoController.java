@@ -46,13 +46,10 @@ public class VideoController {
         var videoExists = files.contains(escapedName); // file not found 404
         var pathToVideo = Paths.get("src/main/resources/source/"  + escapedName);
         var videoProbe = FFprobe.atPath().setInput(pathToVideo);
-        var frameData = videoProbe.setShowFrames(true).execute();
-        var responseBody = videoExists
-                ? (JsonArray) frameData.getData().getValue("frames")
-                : new JsonArray(List.of("No Video found!"));
+        var frameData = videoExists ? videoProbe.setShowFrames(true).execute() : null;
         return videoExists
-                ? ResponseEntity.status(HttpStatus.NOT_FOUND).build()
-                : ResponseEntity.ok(responseBody);
+                ? ResponseEntity.ok((JsonArray) frameData.getData().getValue("frames"))
+                : ResponseEntity.status(HttpStatus.NOT_FOUND).body("File not found!");
     }
 
 
