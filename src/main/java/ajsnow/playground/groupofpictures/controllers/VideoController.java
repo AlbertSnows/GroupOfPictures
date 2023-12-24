@@ -1,6 +1,8 @@
 package ajsnow.playground.groupofpictures.controllers;
 
+import ajsnow.playground.groupofpictures.services.routing.RoutingCore;
 import ajsnow.playground.groupofpictures.services.video.VideoRead;
+import ajsnow.playground.groupofpictures.utility.rop.result.TypeOf;
 import com.github.kokorin.jaffree.ffmpeg.FFmpeg;
 import com.github.kokorin.jaffree.ffmpeg.UrlInput;
 import com.github.kokorin.jaffree.ffmpeg.UrlOutput;
@@ -26,6 +28,13 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.apache.commons.text.StringEscapeUtils;
 
+import static ajsnow.playground.groupofpictures.data.Constants.SOURCE_PATH;
+import static ajsnow.playground.groupofpictures.utility.rop.result.Resolvers.collapse;
+import static ajsnow.playground.groupofpictures.utility.rop.result.Transformers.onFailure;
+import static ajsnow.playground.groupofpictures.utility.rop.result.Transformers.onSuccess;
+import static ajsnow.playground.groupofpictures.utility.rop.result.TypeOf.using;
+import static ajsnow.playground.groupofpictures.utility.rop.wrappers.Piper.pipe;
+
 @Controller
 @RequestMapping("/videos")
 public class VideoController {
@@ -40,15 +49,15 @@ public class VideoController {
     @GetMapping("/{videoName}")
     public ResponseEntity<?> getFrameData(@PathVariable("videoName") String name) {
         var escapedName = StringEscapeUtils.escapeJava(name);
-        var folder = new File("src/main/resources/source/");
-        var files = new HashSet<>(List.of(Objects.requireNonNull(folder.list())));
-        var videoExists = files.contains(escapedName); // file not found 404
-        var pathToVideo = Paths.get("src/main/resources/source/"  + escapedName);
-        var videoProbe = FFprobe.atPath().setInput(pathToVideo);
-        var frameData = videoExists ? videoProbe.setShowFrames(true).execute() : null;
-        return videoExists
-                ? ResponseEntity.ok((JsonArray) frameData.getData().getValue("frames"))
-                : ResponseEntity.status(HttpStatus.NOT_FOUND).body("File not found!");
+        return pipe(escapedName)
+                .then(RoutingCore::handleFileNotFound)
+                .then(onSuccess(VideoRead::getFrameDataForVideo))
+                .then(using(TypeOf.<Object>forSuccesses()))
+                .then(using(TypeOf.<Object>forFailures()))
+                .then(onSuccess(ResponseEntity::ok))
+                .then(onFailure(err -> ResponseEntity.status(HttpStatus.NOT_FOUND).body(err)))
+                .then(collapse())
+                .resolve();
     }
 
 
