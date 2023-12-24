@@ -104,8 +104,7 @@ public class VideoController {
             var extractGOP = videoData
                     .addArguments("-ss", startFrameTime)
                     .addOutput(urlOutput);
-            //Concern: doesn't work in debugger mode?
-            extractGOP.execute(); //.wait();
+            extractGOP.execute();
         } else {
             JsonObject endFrameData = (JsonObject) frameList.get(nextIFrame);
             String startFrameRawTime = (String) startFrameData.get("pts_time");
@@ -122,7 +121,7 @@ public class VideoController {
                     .addArguments("-c:a", "copy")
                     .addOutput(urlOutput);
             //Concern: doesn't work in debugger mode?
-            extractGOP.execute(); //.wait();
+            extractGOP.execute();
         }
         //Confusion: why doesn't this work???
 //        var clipFilePath = new ClassPathResource(
@@ -150,11 +149,14 @@ public class VideoController {
     @GetMapping("/{videoName}/group-of-pictures")
     public String getFramesAsVideos(
             @PathVariable("videoName") String name,
-            @NotNull Model model
-    ) {
-        // fnf, fnp
-        // indexes not possible { list ...}
-        // return html doc
+            @NotNull Model model) {
+        var escapedName = StringEscapeUtils.escapeJava(name);
+        var videoDirectory = "src/main/resources/source/";
+        var path = Path.of(videoDirectory + escapedName);
+        var fileExists = Files.exists(path);
+        if(!fileExists) {
+            return "error";
+        }
         var dataForFrames = videoRead.videoSource.videoProbe
                 .setShowFrames(true)
                 .execute();
@@ -169,16 +171,23 @@ public class VideoController {
                 .boxed()
                 .collect(Collectors.toCollection(TreeSet::new));
         var pathToVideo = Paths.get("src/main/resources/source/CoolVideo.mp4");
+        var clipDirectory = "src/main/resources/static/";
+        var videoNameWithoutExtension = escapedName.split("\\.mp4")[0];
+        var newDirectory = clipDirectory + videoNameWithoutExtension;
+        try {
+            var outcome = Files.createDirectories(Paths.get(newDirectory));
+        } catch (Exception ex) {
+            System.out.println("Problem creating directories! Error: " + ex.getMessage());
+            model.addAttribute("errorMessage", "Couldn't create a directory, sorry! :(");
+            return "error";
+        }
         for(var keyframeIndex : iFrameIndexes) {
             var videoData = FFmpeg.atPath()
                     .addInput(UrlInput.fromPath(pathToVideo));
-
-            var start = keyframeIndex;
-            var nextIFrame = iFrameIndexes.higher(start);
-            var end = nextIFrame;
-            if(end != null) {
-                JsonObject startFrameData = (JsonObject) frameList.get(start);
-                JsonObject endFrameData = (JsonObject) frameList.get(end);
+            var nextIFrame = iFrameIndexes.higher(keyframeIndex);
+            if(nextIFrame != null) {
+                JsonObject startFrameData = (JsonObject) frameList.get(keyframeIndex);
+                JsonObject endFrameData = (JsonObject) frameList.get(nextIFrame);
                 String startFrameRawTime = (String) startFrameData.get("pts_time");
                 var offset = 70;
                 var possibleStartTime = (1000 * Float.parseFloat(startFrameRawTime) - offset);
@@ -187,14 +196,13 @@ public class VideoController {
                 var startFrameTime = Math.max((int) possibleStartTime, 0) + "ms";
                 var endFrameTime = endTime + "ms";
                 var outputFile = UrlOutput.toPath(Path.of(String.format(
-                        "src/main/resources/static/%d.mp4", keyframeIndex)));
+                        "src/main/resources/static/" + videoNameWithoutExtension + "/%d.mp4", keyframeIndex)));
                 var next = videoData
                         .addArguments("-ss", startFrameTime)
                         .addArguments("-to", endFrameTime)
                         .addArguments("-c:v", "copy")
                         .addArguments("-c:a", "copy")
                         .addOutput(outputFile);
-                //todo: doesn't work in debugger mode?
                 next.execute();
             }
         }
@@ -202,7 +210,7 @@ public class VideoController {
                 .toList());
         clipNames.remove(iFrameIndexes.size() - 1);
         model.addAttribute("clipFileNames", clipNames);
-        model.addAttribute("videoFileName", name);
+        model.addAttribute("videoFileName", videoNameWithoutExtension);
         return "video_sequence";
     }
 }
