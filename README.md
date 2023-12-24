@@ -13,3 +13,8 @@ documentation
 get working with docker
 
 answer questions
+
+## steps
+change code -> gradle build
+change docker or code -> docker bouild
+run -> docker run
