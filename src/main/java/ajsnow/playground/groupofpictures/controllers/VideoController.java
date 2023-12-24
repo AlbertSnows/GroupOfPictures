@@ -1,21 +1,23 @@
 package ajsnow.playground.groupofpictures.controllers;
 
-import ajsnow.playground.groupofpictures.data.VideoSource;
 import ajsnow.playground.groupofpictures.services.video.VideoRead;
 import com.github.kokorin.jaffree.ffmpeg.FFmpeg;
 import com.github.kokorin.jaffree.ffmpeg.UrlInput;
 import com.github.kokorin.jaffree.ffmpeg.UrlOutput;
+import com.github.kokorin.jaffree.ffprobe.FFprobe;
 import com.grack.nanojson.JsonArray;
 import com.grack.nanojson.JsonObject;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.ClassPathResource;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -23,6 +25,7 @@ import java.util.*;
 import java.util.function.IntPredicate;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import org.apache.commons.text.StringEscapeUtils;
 
 @Controller
 @RequestMapping("/videos")
@@ -36,16 +39,20 @@ public class VideoController {
     }
 
     @GetMapping("/{videoName}")
-    public ResponseEntity<JsonArray> getFrameData(@PathVariable("videoName") String name) {
-        // cases
-        // file not found 404
-        // file not parsable
-        // file parsable, give data
-        // remove cast
-        var frameData = videoRead.videoSource.videoProbe
-                .setShowFrames(true)
-                .execute();
-        return ResponseEntity.ok((JsonArray) frameData.getData().getValue("frames"));
+    public ResponseEntity<?> getFrameData(@PathVariable("videoName") String name) {
+        var escapedName = StringEscapeUtils.escapeJava(name);
+        var folder = new File("src/main/resources/source/");
+        var files = new HashSet<>(List.of(Objects.requireNonNull(folder.list())));
+        var videoExists = files.contains(escapedName); // file not found 404
+        var pathToVideo = Paths.get("src/main/resources/source/"  + escapedName);
+        var videoProbe = FFprobe.atPath().setInput(pathToVideo);
+        var frameData = videoProbe.setShowFrames(true).execute();
+        var responseBody = videoExists
+                ? (JsonArray) frameData.getData().getValue("frames")
+                : new JsonArray(List.of("No Video found!"));
+        return videoExists
+                ? ResponseEntity.status(HttpStatus.NOT_FOUND).build()
+                : ResponseEntity.ok(responseBody);
     }
 
 
