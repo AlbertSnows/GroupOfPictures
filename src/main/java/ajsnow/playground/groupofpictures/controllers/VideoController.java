@@ -30,8 +30,7 @@ import org.apache.commons.text.StringEscapeUtils;
 
 import static ajsnow.playground.groupofpictures.data.Constants.SOURCE_PATH;
 import static ajsnow.playground.groupofpictures.utility.rop.result.Resolvers.collapse;
-import static ajsnow.playground.groupofpictures.utility.rop.result.Transformers.onFailure;
-import static ajsnow.playground.groupofpictures.utility.rop.result.Transformers.onSuccess;
+import static ajsnow.playground.groupofpictures.utility.rop.result.Transformers.*;
 import static ajsnow.playground.groupofpictures.utility.rop.result.TypeOf.using;
 import static ajsnow.playground.groupofpictures.utility.rop.wrappers.Piper.pipe;
 
@@ -51,7 +50,7 @@ public class VideoController {
         var escapedName = StringEscapeUtils.escapeJava(name);
         return pipe(escapedName)
                 .then(RoutingCore::handleFileNotFound)
-                .then(onSuccess(VideoRead::getFrameDataForVideo))
+                .then(attempt(VideoRead::getFrameDataForVideo))
                 .then(using(TypeOf.<Object>forSuccesses()))
                 .then(using(TypeOf.<Object>forFailures()))
                 .then(onSuccess(ResponseEntity::ok))
