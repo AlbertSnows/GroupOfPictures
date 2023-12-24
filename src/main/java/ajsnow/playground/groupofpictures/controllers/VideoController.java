@@ -155,8 +155,9 @@ public class VideoController {
         } catch (Exception ex) {
             System.out.println("problem sending response...");
         }
-        List<String> videoNames = List.of("CoolVideoClip.mp4");
-        model.addAttribute("videoFileNames", videoNames);
+        List<String> clipNames = List.of("CoolVideoClip.mp4");
+        model.addAttribute("clipFileNames", clipNames);
+        model.addAttribute("videoFileName", name);
         return "video_sequence";
     }
 }
