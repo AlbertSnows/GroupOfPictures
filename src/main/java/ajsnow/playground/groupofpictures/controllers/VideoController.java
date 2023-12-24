@@ -61,6 +61,7 @@ public class VideoController {
     }
 
 
+    // bonus: convert to rop
     @GetMapping("/{videoName}/group-of-pictures/{groupIndex}")
     public ResponseEntity<?> streamGroupVideo(@PathVariable("videoName") String name,
                                               @PathVariable("groupIndex") @NotNull String indexName) {
@@ -153,6 +154,7 @@ public class VideoController {
         return ResponseEntity.internalServerError().body("Internal server error, everything is on fire AHHHHH!");
     }
 
+    // bonus: convert to rop
     @GetMapping("/{videoName}/group-of-pictures")
     public String getFramesAsVideos(
             @PathVariable("videoName") String name,
