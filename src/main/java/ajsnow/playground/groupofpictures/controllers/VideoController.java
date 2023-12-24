@@ -15,6 +15,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.util.ResourceUtils;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.File;
@@ -61,7 +62,6 @@ public class VideoController {
         var path = Path.of(videoDirectory + escapedName);
         var fileExists = Files.exists(path);
         var videoProbe = FFprobe.atPath().setInput(path);
-
         if(!fileExists) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("File not found!");
         }
@@ -82,27 +82,31 @@ public class VideoController {
         var videoData = FFmpeg.atPath().addInput(UrlInput.fromPath(pathToVideo));
         var escapedIndex = StringEscapeUtils.escapeJava(indexName);
         var videoNameWithoutExtension = escapedName.split("\\.mp4")[0];
-        var outputPath = Path.of(videoDirectory)
-                .resolve(videoNameWithoutExtension)
-                .resolve("/" + escapedIndex);
-        //todo: change this to make a directory in the form resources/source/<videoname>/1, 2, ...
+        var clipDirectory = "src/main/resources/static/";
+        var newDirectory = clipDirectory + videoNameWithoutExtension;
+        try {
+            Files.createDirectories(Paths.get(newDirectory));
+        } catch (Exception ex) {
+            System.out.println("Problem creating directories! Error: " + ex.getMessage());
+            return ResponseEntity.internalServerError().body("Couldn't create a directory, sorry! :(");
+        }
+        var outputPath = Path.of(newDirectory + "/" + escapedIndex);
         var urlOutput = UrlOutput.toPath(outputPath);
         if(!iFrameIndexes.contains(start)) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Index not found!");
-        } else if(nextIFrame == null) {
-            JsonObject startFrameData = (JsonObject) frameList.get(start);
+        }
+        JsonObject startFrameData = (JsonObject) frameList.get(start);
+        if(nextIFrame == null) {
             String startFrameRawTime = (String) startFrameData.get("pts_time");
             var offset = 70;
             var possibleStartTime = (1000 * Float.parseFloat(startFrameRawTime) - offset);
             var startFrameTime = Math.max((int) possibleStartTime, 0) + "ms";
             var extractGOP = videoData
                     .addArguments("-ss", startFrameTime)
-                    .addArguments("-frames:v", "1")
                     .addOutput(urlOutput);
-            //todo: doesn't work in debugger mode?
+            //Concern: doesn't work in debugger mode?
             extractGOP.execute(); //.wait();
         } else {
-            JsonObject startFrameData = (JsonObject) frameList.get(start);
             JsonObject endFrameData = (JsonObject) frameList.get(nextIFrame);
             String startFrameRawTime = (String) startFrameData.get("pts_time");
             var offset = 70;
@@ -117,21 +121,30 @@ public class VideoController {
                     .addArguments("-c:v", "copy")
                     .addArguments("-c:a", "copy")
                     .addOutput(urlOutput);
-            //todo: doesn't work in debugger mode?
+            //Concern: doesn't work in debugger mode?
             extractGOP.execute(); //.wait();
         }
-        var clipFilePath = new ClassPathResource(String.format("source/" + escapedIndex));
+        //Confusion: why doesn't this work???
+//        var clipFilePath = new ClassPathResource(
+//                String.format("static/" + videoNameWithoutExtension +"/" + escapedIndex),
+//                getClass().getClassLoader());
+
+        var clipFile = new File(String.format("src/main/resources/static/" + videoNameWithoutExtension +"/" + escapedIndex));
+        if(!clipFile.exists()) {
+            return ResponseEntity.internalServerError().body("Could not find the clip. " +
+                    "This is a really bizarre bug and I haven't been able to discern the cause. " +
+                    "Sorry about that! ");
+        }
         try {
-            var clipFile = clipFilePath.getFile();
             var videoBytes = Files.readAllBytes(clipFile.toPath());
             return ResponseEntity.ok()
-                    .header("Content-Disposition", "attachment; filename=\"e.mp4\"")
+                    .header("Content-Disposition", "attachment; filename=\""+escapedIndex+"\"")
                     .body(new ByteArrayResource(videoBytes));
         } catch (Exception ex) {
             System.out.println("Problem sending response: " + ex.getMessage());
         }
         // give data
-        return ResponseEntity.internalServerError().body(new ByteArrayResource(new byte[]{}));
+        return ResponseEntity.internalServerError().body("Internal server error, everything is on fire AHHHHH!");
     }
 
     @GetMapping("/{videoName}/group-of-pictures")
