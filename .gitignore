@@ -29,3 +29,4 @@ replay_pid*
 /src/main/resources/static/*.mp4
 /src/main/resources/source/
 /src/main/resources/static/CoolVideo/
+/src/main/resources/output_tests/
