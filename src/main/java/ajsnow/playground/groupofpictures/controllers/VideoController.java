@@ -54,13 +54,18 @@ public class VideoController {
 
 
     @GetMapping("/{videoName}/group-of-pictures/{groupIndex}")
-    public ResponseEntity<ByteArrayResource> streamGroupVideo(@PathVariable("videoName") String name,
-                                                              @PathVariable("groupIndex") @NotNull String indexName) {
-        // fnf, fnp, index not found, index not parsable
-        // give data
-        var dataForFrames = videoRead.videoSource.videoProbe
-                .setShowFrames(true)
-                .execute();
+    public ResponseEntity<?> streamGroupVideo(@PathVariable("videoName") String name,
+                                              @PathVariable("groupIndex") @NotNull String indexName) {
+        var escapedName = StringEscapeUtils.escapeJava(name);
+        var videoDirectory = "src/main/resources/source/";
+        var path = Path.of(videoDirectory + escapedName);
+        var fileExists = Files.exists(path);
+        var videoProbe = FFprobe.atPath().setInput(path);
+
+        if(!fileExists) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("File not found!");
+        }
+        var dataForFrames = videoProbe.setShowFrames(true).execute();
         JsonArray frameList = (JsonArray) dataForFrames.getData().getValue("frames");
         IntPredicate isIFrame = frameIndex -> {
             var frameData = (JsonObject) frameList.get(frameIndex);
@@ -73,38 +78,59 @@ public class VideoController {
                 .collect(Collectors.toCollection(TreeSet::new));
         var start = Integer.parseInt(indexName.split("\\.mp4")[0]);
         var nextIFrame = iFrameIndexes.higher(start);
-        var end = nextIFrame - 1;
-        var startFrameData = frameList.get(start);
-        var endFrameData = frameList.get(end);
-        var pathToVideo = Paths.get("src/main/resources/source/CoolVideo.mp4");
-        var videoData = FFmpeg.atPath()
-                .addInput(UrlInput.fromPath(pathToVideo));
-        var next = videoData
-                .addArguments("-ss", "2830ms")
-                .addArguments("-to", "6867ms")
-                .addArguments("-c:v", "copy")
-                .addArguments("-c:a", "copy")
-                .setOverwriteOutput(true)
-                //todo: change this to make a directory in the form resources/source/<videoname>/1, 2, ...
-                .addOutput(UrlOutput.toPath(Path.of("src/main/resources/source/e.mp4")));
-        try {
+        var pathToVideo = Paths.get("src/main/resources/source/" + name);
+        var videoData = FFmpeg.atPath().addInput(UrlInput.fromPath(pathToVideo));
+        var escapedIndex = StringEscapeUtils.escapeJava(indexName);
+        var videoNameWithoutExtension = escapedName.split("\\.mp4")[0];
+        var outputPath = Path.of(videoDirectory)
+                .resolve(videoNameWithoutExtension)
+                .resolve("/" + escapedIndex);
+        //todo: change this to make a directory in the form resources/source/<videoname>/1, 2, ...
+        var urlOutput = UrlOutput.toPath(outputPath);
+        if(!iFrameIndexes.contains(start)) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Index not found!");
+        } else if(nextIFrame == null) {
+            JsonObject startFrameData = (JsonObject) frameList.get(start);
+            String startFrameRawTime = (String) startFrameData.get("pts_time");
+            var offset = 70;
+            var possibleStartTime = (1000 * Float.parseFloat(startFrameRawTime) - offset);
+            var startFrameTime = Math.max((int) possibleStartTime, 0) + "ms";
+            var extractGOP = videoData
+                    .addArguments("-ss", startFrameTime)
+                    .addArguments("-frames:v", "1")
+                    .addOutput(urlOutput);
             //todo: doesn't work in debugger mode?
-            next.execute(); //.wait();
-        } catch (Exception ex) {
-            System.out.println("problem waiting...");
+            extractGOP.execute(); //.wait();
+        } else {
+            JsonObject startFrameData = (JsonObject) frameList.get(start);
+            JsonObject endFrameData = (JsonObject) frameList.get(nextIFrame);
+            String startFrameRawTime = (String) startFrameData.get("pts_time");
+            var offset = 70;
+            var possibleStartTime = (1000 * Float.parseFloat(startFrameRawTime) - offset);
+            String endFrameRawTime = (String) endFrameData.get("pts_time");
+            var endTime = (int) (1000 * Float.parseFloat(endFrameRawTime));
+            var startFrameTime = Math.max((int) possibleStartTime, 0) + "ms";
+            var endFrameTime = endTime + "ms";
+            var extractGOP = videoData
+                    .addArguments("-ss", startFrameTime)
+                    .addArguments("-to", endFrameTime)
+                    .addArguments("-c:v", "copy")
+                    .addArguments("-c:a", "copy")
+                    .addOutput(urlOutput);
+            //todo: doesn't work in debugger mode?
+            extractGOP.execute(); //.wait();
         }
-
+        var clipFilePath = new ClassPathResource(String.format("source/" + escapedIndex));
         try {
-            var clipFilePath = new ClassPathResource("source/name.mp4");
-            var x = clipFilePath.exists();
             var clipFile = clipFilePath.getFile();
             var videoBytes = Files.readAllBytes(clipFile.toPath());
             return ResponseEntity.ok()
                     .header("Content-Disposition", "attachment; filename=\"e.mp4\"")
                     .body(new ByteArrayResource(videoBytes));
         } catch (Exception ex) {
-            System.out.println("problem sending response...");
+            System.out.println("Problem sending response: " + ex.getMessage());
         }
+        // give data
         return ResponseEntity.internalServerError().body(new ByteArrayResource(new byte[]{}));
     }
 
