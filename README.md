@@ -6,4 +6,6 @@ Refer to the docs folder for more info.
 ## TODO
 documentation
 
-list endpoints
+get working with docker
+
+answer questions
