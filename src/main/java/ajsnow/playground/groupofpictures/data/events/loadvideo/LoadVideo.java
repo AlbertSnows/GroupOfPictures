@@ -13,8 +13,6 @@ public class LoadVideo extends ApplicationEvent{
     }
     @Contract(pure = true)
     public static @NotNull Consumer<ApplicationEventPublisher> announce(Object context) {
-        return publisher -> {
-            publisher.publishEvent(new LoadVideo(context));
-        };
+        return publisher -> publisher.publishEvent(new LoadVideo(context));
     }
 }

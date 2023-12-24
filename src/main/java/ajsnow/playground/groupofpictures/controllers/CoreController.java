@@ -11,6 +11,10 @@ import java.util.Map;
 @Controller
 public class CoreController {
 	private static final Logger logger = LoggerFactory.getLogger(CoreController.class);
+
+	/**
+	 * @return forward
+	 */
 	@RequestMapping("/")
 	public String default_route() {
 		return "forward:/entry";

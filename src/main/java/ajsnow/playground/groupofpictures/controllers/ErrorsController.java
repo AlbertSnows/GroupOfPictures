@@ -37,6 +37,9 @@ public class ErrorsController implements ErrorController {
 		return new ResponseEntity<>(errorAttributesMap, status);
 	}
 
+	/**
+	 * @return error path
+	 */
 	public String getErrorPath() {
 		return "/error";
 	}

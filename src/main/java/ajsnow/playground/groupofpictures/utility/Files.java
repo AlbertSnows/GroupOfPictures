@@ -1,6 +1,5 @@
 package ajsnow.playground.groupofpictures.utility;
 
-import org.apache.commons.text.StringEscapeUtils;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 
