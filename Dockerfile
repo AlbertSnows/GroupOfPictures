@@ -17,7 +17,7 @@ RUN --mount=type=cache,target=/root/.gradle ./gradlew clean build
 RUN mkdir -p build/dependency && (cd build/dependency; jar -xf ../libs/*-SNAPSHOT.jar)
 
 
-FROM eclipse-temurin:17-jdk-alpine
+FROM eclipse-temurin:17-jdk
 # volume specifices where external(persistent) data is to be stored
 VOLUME /tmp
 # all files we want to grab will be under this directory from build
@@ -26,6 +26,8 @@ ARG DEPENDENCY=/workspace/app/build/dependency
 COPY --from=build ${DEPENDENCY}/BOOT-INF/lib /app/lib
 COPY --from=build ${DEPENDENCY}/META-INF /app/META-INF
 COPY --from=build ${DEPENDENCY}/BOOT-INF/classes /app
-# for the schema files
-COPY src/main/resources/source/ src/main/resources/source/
-ENTRYPOINT ["java","-cp","app:app/lib/*","ajsnow.playground.groupofpictures.Entry"]
+#WORKDIR /workspace/app
+COPY entrypoint.sh /workspace/app/entrypoint.sh
+RUN chmod +x /workspace/app/entrypoint.sh
+RUN /workspace/app/entrypoint.sh
+#ENTRYPOINT ["entrypoint.sh"]

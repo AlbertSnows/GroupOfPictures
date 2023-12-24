@@ -27,6 +27,9 @@ public class VideoRead {
      */
     public static @NotNull JsonArray getFrameDataForVideo(String name) {
         var pathToVideo = Paths.get(SOURCE_PATH  + name);
+        System.out.println(SOURCE_PATH + name);
+//        System.out.println(pathToVideo.);
+
         var videoProbe = FFprobe.atPath().setInput(pathToVideo);
         var frameData = videoProbe.setShowFrames(true).execute();
         return (JsonArray) frameData.getData().getValue("frames");
