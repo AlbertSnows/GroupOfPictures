@@ -1,5 +1,5 @@
 # GroupOfPictures
- GOP codec project
+ GOP codec assessment
 
 ## TODO
 documentation

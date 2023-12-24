@@ -34,7 +34,7 @@ Same as the previous section, make sure you have Docker installed.
 docker --version
 ```
 
-If not, go to their website so you can download the engine.
+If not, go to their website, so you can download the engine.
 
 Once you have it installed, you need to run two commands.
 

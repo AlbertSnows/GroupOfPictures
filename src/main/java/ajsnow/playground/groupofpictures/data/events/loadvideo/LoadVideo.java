@@ -1,4 +1,4 @@
-package ajsnow.playground.groupofpictures.data.events.LoadVideo;
+package ajsnow.playground.groupofpictures.data.events.loadvideo;
 
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;

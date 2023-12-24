@@ -1,7 +1,7 @@
 package ajsnow.playground.groupofpictures;
 
 import ajsnow.playground.groupofpictures.data.events.CorePublisher;
-import ajsnow.playground.groupofpictures.data.events.LoadVideo.LoadVideo;
+import ajsnow.playground.groupofpictures.data.events.loadvideo.LoadVideo;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.ConfigurableApplicationContext;

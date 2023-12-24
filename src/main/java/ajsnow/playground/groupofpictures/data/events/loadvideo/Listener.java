@@ -1,6 +1,5 @@
-package ajsnow.playground.groupofpictures.data.events.LoadVideo;
+package ajsnow.playground.groupofpictures.data.events.loadvideo;
 
-import ajsnow.playground.groupofpictures.data.events.LoadVideo.LoadVideo;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
