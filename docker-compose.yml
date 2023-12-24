@@ -4,7 +4,5 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      args:
-        IS_ENABLED: ${DEBUG:-false} # defaults to false
     ports:
       - "8080:8080"

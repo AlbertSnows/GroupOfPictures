@@ -1,7 +1,9 @@
 #!/bin/bash
-
+#DEBUG=${DEBUG:-"false"}
 #if [ "$DEBUG" = "false" ]; then
-    exec java -cp "app:app/lib/*" ajsnow.playground.groupofpictures.Entry
+#    echo "No debug..."
+#    exec java -cp "app:app/lib/*" ajsnow.playground.groupofpictures.Entry
 #else
-#    exec java -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=8000 -cp "app:app/lib/*" ajsnow.playground.groupofpictures.Entry
+    echo "Debugging!"
+    exec java -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=8000 -jar app.jar
 #fi
