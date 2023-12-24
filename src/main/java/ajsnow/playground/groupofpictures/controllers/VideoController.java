@@ -82,7 +82,7 @@ public class VideoController {
                 .addArguments("-c:a", "copy")
                 .setOverwriteOutput(true)
                 //todo: change this to make a directory in the form resources/source/<videoname>/1, 2, ...
-                .addOutput(UrlOutput.toPath(Path.of("src/main/resources/source/CoolVideoClip.mp4")));
+                .addOutput(UrlOutput.toPath(Path.of("src/main/resources/source/e.mp4")));
         try {
             //todo: doesn't work in debugger mode?
             next.execute(); //.wait();
@@ -91,12 +91,12 @@ public class VideoController {
         }
 
         try {
-            var clipFilePath = new ClassPathResource("source/CoolVideoClip.mp4");
+            var clipFilePath = new ClassPathResource("source/name.mp4");
             var x = clipFilePath.exists();
             var clipFile = clipFilePath.getFile();
             var videoBytes = Files.readAllBytes(clipFile.toPath());
             return ResponseEntity.ok()
-                    .header("Content-Disposition", "attachment; filename=\"CoolVideoClip.mp4\"")
+                    .header("Content-Disposition", "attachment; filename=\"e.mp4\"")
                     .body(new ByteArrayResource(videoBytes));
         } catch (Exception ex) {
             System.out.println("problem sending response...");
@@ -126,9 +126,10 @@ public class VideoController {
                 .boxed()
                 .collect(Collectors.toCollection(TreeSet::new));
         var pathToVideo = Paths.get("src/main/resources/source/CoolVideo.mp4");
-        var videoData = FFmpeg.atPath()
-                .addInput(UrlInput.fromPath(pathToVideo));
         for(var keyframeIndex : iFrameIndexes) {
+            var videoData = FFmpeg.atPath()
+                    .addInput(UrlInput.fromPath(pathToVideo));
+
             var start = keyframeIndex;
             var nextIFrame = iFrameIndexes.higher(start);
             var end = nextIFrame;
@@ -154,8 +155,9 @@ public class VideoController {
                 next.execute();
             }
         }
-        List<String> clipNames = iFrameIndexes.stream().map(index -> index + ".mp4")
-                .toList();
+        List<String> clipNames = new ArrayList<>(iFrameIndexes.stream().map(index -> index + ".mp4")
+                .toList());
+        clipNames.remove(iFrameIndexes.size() - 1);
         model.addAttribute("clipFileNames", clipNames);
         model.addAttribute("videoFileName", name);
         return "video_sequence";
