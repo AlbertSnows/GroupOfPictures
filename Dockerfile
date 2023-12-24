@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:experimental
 # https://spring.io/guides/topicals/spring-boot-docker/
 # AS build allows us to reference this context further in the file
-FROM eclipse-temurin:21-jdk-alpine AS build
+FROM eclipse-temurin:17-jdk AS build
 
 # set work space up
 WORKDIR /workspace/app
@@ -17,7 +17,7 @@ RUN --mount=type=cache,target=/root/.gradle ./gradlew clean build
 RUN mkdir -p build/dependency && (cd build/dependency; jar -xf ../libs/*-SNAPSHOT.jar)
 
 
-FROM eclipse-temurin:21-jdk-alpine
+FROM eclipse-temurin:17-jdk-alpine
 # volume specifices where external(persistent) data is to be stored
 VOLUME /tmp
 # all files we want to grab will be under this directory from build
@@ -27,5 +27,5 @@ COPY --from=build ${DEPENDENCY}/BOOT-INF/lib /app/lib
 COPY --from=build ${DEPENDENCY}/META-INF /app/META-INF
 COPY --from=build ${DEPENDENCY}/BOOT-INF/classes /app
 # for the schema files
-COPY src/main/resources/schemas/ src/main/resources/schemas/
+COPY src/main/resources/source/ src/main/resources/source/
 ENTRYPOINT ["java","-cp","app:app/lib/*","ajsnow.playground.groupofpictures.Entry"]
