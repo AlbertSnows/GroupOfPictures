@@ -125,37 +125,37 @@ public class VideoController {
                 .filter(isIFrame)
                 .boxed()
                 .collect(Collectors.toCollection(TreeSet::new));
-        var start = Integer.parseInt("87");
-        var nextIFrame = iFrameIndexes.higher(start);
-        var end = nextIFrame - 1;
-        var startFrameData = frameList.get(start);
-        var endFrameData = frameList.get(end);
         var pathToVideo = Paths.get("src/main/resources/source/CoolVideo.mp4");
         var videoData = FFmpeg.atPath()
                 .addInput(UrlInput.fromPath(pathToVideo));
-        var next = videoData
-                .addArguments("-ss", "2830ms")
-                .addArguments("-to", "6867ms")
-                .addArguments("-c:v", "copy")
-                .addArguments("-c:a", "copy")
-
-                .addOutput(UrlOutput.toPath(Path.of("src/main/resources/static/CoolVideoClip.mp4")));
-        try {
-            //todo: doesn't work in debugger mode?
-            next.execute(); //.wait();
-        } catch (Exception ex) {
-            System.out.println("problem waiting...");
+        for(var keyframeIndex : iFrameIndexes) {
+            var start = keyframeIndex;
+            var nextIFrame = iFrameIndexes.higher(start);
+            var end = nextIFrame;
+            if(end != null) {
+                JsonObject startFrameData = (JsonObject) frameList.get(start);
+                JsonObject endFrameData = (JsonObject) frameList.get(end);
+                String startFrameRawTime = (String) startFrameData.get("pts_time");
+                var offset = 70;
+                var possibleStartTime = (1000 * Float.parseFloat(startFrameRawTime) - offset);
+                String endFrameRawTime = (String) endFrameData.get("pts_time");
+                var endTime = (int) (1000 * Float.parseFloat(endFrameRawTime));
+                var startFrameTime = Math.max((int) possibleStartTime, 0) + "ms";
+                var endFrameTime = endTime + "ms";
+                var outputFile = UrlOutput.toPath(Path.of(String.format(
+                        "src/main/resources/static/%d.mp4", keyframeIndex)));
+                var next = videoData
+                        .addArguments("-ss", startFrameTime)
+                        .addArguments("-to", endFrameTime)
+                        .addArguments("-c:v", "copy")
+                        .addArguments("-c:a", "copy")
+                        .addOutput(outputFile);
+                //todo: doesn't work in debugger mode?
+                next.execute();
+            }
         }
-
-        try {
-            var clipFilePath = new ClassPathResource("source/CoolVideoClip.mp4");
-            var x = clipFilePath.exists();
-            var clipFile = clipFilePath.getFile();
-            var videoBytes = Files.readAllBytes(clipFile.toPath());
-        } catch (Exception ex) {
-            System.out.println("problem sending response...");
-        }
-        List<String> clipNames = List.of("CoolVideoClip.mp4");
+        List<String> clipNames = iFrameIndexes.stream().map(index -> index + ".mp4")
+                .toList();
         model.addAttribute("clipFileNames", clipNames);
         model.addAttribute("videoFileName", name);
         return "video_sequence";
