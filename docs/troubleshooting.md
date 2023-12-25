@@ -19,12 +19,10 @@ you need to do *:<port> not just port in the java command
 in the sh file
 see: https://stackoverflow.com/questions/30858312/handshake-failed-connection-prematurally-closed-error-when-debugging-solr-in-i
 
-## Files are spooky
-OH MY GOD
-IT'S BECAUSE THE APPLICATION ISN'T LOOKING IN THAT 
-DIRECTORY
-AHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH
-
+## Files are spooky v3
+the actual reasons seems to be that I asked
+for the file before I was creating it
+it might be because i didn't put them in the build folder
 they need to be put in the build directory, that's where
 the application is run
 

@@ -3,9 +3,12 @@
 # AS build allows us to reference this context further in the file
 FROM eclipse-temurin:17-jdk AS build
 
+RUN apt-get update && apt-get install -y ffmpeg && apt-get clean
+
 # set work space up
 WORKDIR /workspace/app
 COPY . /workspace/app
+
 
 # When doing a gradle clean build, we don't generally want to remake
 # /root/.gradle so this says to not rebuild it unless it changes
@@ -33,7 +36,6 @@ RUN chmod +x /app/entrypoint.sh
 # RUN /workspace/app/entrypoint.sh
 #ENTRYPOINT ["entrypoint.sh"]
 # Update package lists and install FFmpeg
-RUN apt-get update
-RUN apt-get install -y ffmpeg
+
 
 ENTRYPOINT ["/bin/bash", "/app/entrypoint.sh"]
