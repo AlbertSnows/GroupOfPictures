@@ -1,10 +1,7 @@
 package ajsnow.playground.groupofpictures.services.routing;
 
 import ajsnow.playground.groupofpictures.utility.rop.result.Result;
-import org.apache.commons.text.StringEscapeUtils;
 import org.jetbrains.annotations.NotNull;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 
 import java.io.File;
 import java.util.HashSet;
