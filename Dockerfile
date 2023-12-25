@@ -9,6 +9,7 @@ FROM eclipse-temurin:17-jdk AS build
 # set work space up
 WORKDIR /workspace/app
 COPY . /workspace/app
+RUN chmod +x gradlew
 
 # When doing a gradle clean build, we don't generally want to remake
 # /root/.gradle so this says to not rebuild it unless it changes
