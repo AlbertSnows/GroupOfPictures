@@ -4,7 +4,6 @@
 # less frequent at the top, more frequent changes at the bottom
 FROM eclipse-temurin:17-jdk AS build
 
-#RUN gradle build
 
 # set work space up
 WORKDIR /workspace/app
@@ -41,4 +40,4 @@ RUN chmod +x /app/entrypoint.sh
 # Update package lists and install FFmpeg
 
 
-ENTRYPOINT ["/bin/bash", "/app/entrypoint.sh"]
+#ENTRYPOINT ["/bin/bash", "/app/entrypoint.sh"]
