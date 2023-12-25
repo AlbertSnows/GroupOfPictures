@@ -2,10 +2,11 @@
  GOP codec assessment.
 Refer to the docs folder for more info.
 
-Note: HowToRun.md is incorrect for now. The library doesn't 
-want to cooperate with a docker image, so I can't get
-the containers to work. In the meantime, you need
-to use `./gradlew bootRun` to spin up the API and
+NOTE: HowToRun.md is incorrect for now. If you run in a docker
+container, it may fail due to the time it takes
+to install ffmpeg for the first time. In which case,
+you'll have to try again. In the meantime, you can
+use `./gradlew bootRun` to spin up the API and
 run the project. Endpoint is `localhost:8080`.
 
 ## TODO
