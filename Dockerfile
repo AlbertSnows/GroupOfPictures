@@ -33,6 +33,7 @@ RUN chmod +x /app/entrypoint.sh
 # RUN /workspace/app/entrypoint.sh
 #ENTRYPOINT ["entrypoint.sh"]
 # Update package lists and install FFmpeg
-RUN apt-get update && apt-get install -y ffmpeg
+RUN apt-get update
+RUN apt-get install -y ffmpeg
 
 ENTRYPOINT ["/bin/bash", "/app/entrypoint.sh"]

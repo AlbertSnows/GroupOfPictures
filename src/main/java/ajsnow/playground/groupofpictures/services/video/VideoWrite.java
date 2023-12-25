@@ -35,17 +35,25 @@ import static ajsnow.playground.groupofpictures.utility.rop.result.Resolvers.col
 
 @Service
 public class VideoWrite {
+
+    public static final String PTS_TIME = "pts_time";
+    public static final String PKT_PTS_TIME = "pkt_pts_time";
+
     public static void clipLastGOP(@NotNull JsonObject startFrameData,
                                    @NotNull FFmpeg videoData,
                                    UrlOutput urlOutput) {
-        String startFrameRawTime = (String) startFrameData.get("pts_time");
+        String startFrameRawTime = (String) startFrameData.get(PKT_PTS_TIME);
         var offset = 70;
         var possibleStartTime = (1000 * Float.parseFloat(startFrameRawTime) - offset);
         var startFrameTime = Math.max((int) possibleStartTime, 0) + "ms";
         var extractGOP = videoData
                 .addArguments("-ss", startFrameTime)
                 .addOutput(urlOutput);
-        extractGOP.execute();
+        try {
+            extractGOP.execute();
+        } catch(Exception ex) {
+            System.out.println("Creation error! Error: " + ex.getMessage());
+        }
     }
 
     public static void clipGOP(@NotNull JsonArray frameList,
@@ -54,10 +62,10 @@ public class VideoWrite {
                                @NotNull FFmpeg videoData,
                                UrlOutput urlOutput) {
         JsonObject endFrameData = (JsonObject) frameList.get(nextIFrame);
-        String startFrameRawTime = (String) startFrameData.get("pts_time");
+        String startFrameRawTime = (String) startFrameData.get(PKT_PTS_TIME);
         var offset = 70;
         var possibleStartTime = (1000 * Float.parseFloat(startFrameRawTime) - offset);
-        String endFrameRawTime = (String) endFrameData.get("pts_time");
+        String endFrameRawTime = (String) endFrameData.get(PKT_PTS_TIME);
         var endTime = (int) (1000 * Float.parseFloat(endFrameRawTime));
         var startFrameTime = Math.max((int) possibleStartTime, 0) + "ms";
         var endFrameTime = endTime + "ms";
@@ -67,7 +75,11 @@ public class VideoWrite {
                 .addArguments("-c:v", "copy")
                 .addArguments("-c:a", "copy")
                 .addOutput(urlOutput);
-        extractGOP.execute();
+        try {
+            extractGOP.execute();
+        } catch(Exception ex) {
+            System.out.println("Creation error! Error: " + ex.getMessage());
+        }
     }
 
     public static @NotNull Result<File, ResponseEntity<Object>>
@@ -162,7 +174,6 @@ public class VideoWrite {
         List<String> clipNames = new ArrayList<>(iFrameIndexes.stream()
                 .map(index -> index + ".mp4")
                 .toList());
-//        clipNames.remove(iFrameIndexes.size() - 1);
         model.addAttribute("clipFileNames", clipNames);
         model.addAttribute("videoFileName", videoNameWithoutExtension);
         return Result.success("video_sequence");
