@@ -1,0 +1,4 @@
+        //Confusion: why doesn't this work???
+//        var clipFilePath = new ClassPathResource(
+//                String.format("static/" + videoNameWithoutExtension +"/" + escapedIndex),
+//                getClass().getClassLoader());

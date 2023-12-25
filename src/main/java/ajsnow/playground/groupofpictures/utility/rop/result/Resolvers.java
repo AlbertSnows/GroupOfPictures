@@ -35,6 +35,18 @@ public interface Resolvers {
     }
 
     /**
+     * basically returns whether the result was a success
+     * @return is success
+     * @param <S> success type
+     * @param <F> failure type
+     */
+    @Contract(pure = true)
+    static <S, F> @NotNull Function<Result<S, F>, Boolean>
+    collapseToBoolean() {
+        return r -> r.either(s -> true, s -> false);
+    }
+
+    /**
      * Takes a Result and returns the success value if it is a success, or if it's
      * a failure, returns the result of applying the recovery function to the
      * failure value.
