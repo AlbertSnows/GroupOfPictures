@@ -37,3 +37,7 @@ oh well
 
 seems to have its own docker image that it doesn't
 recompile on change. run docker-compose 
+
+## .gradlew: not found
+carriage return issue
+https://stackoverflow.com/questions/14219092/bash-script-bin-bashm-bad-interpreter-no-such-file-or-directory
