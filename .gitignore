@@ -24,7 +24,6 @@ hs_err_pid*
 replay_pid*
 /.gradle/
 /build/
-/gradle/
 /.idea/
 /src/main/resources/static/*.mp4
 /src/main/resources/source/

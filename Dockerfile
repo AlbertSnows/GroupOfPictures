@@ -4,6 +4,8 @@
 # less frequent at the top, more frequent changes at the bottom
 FROM eclipse-temurin:17-jdk AS build
 
+#RUN gradle build
+
 # set work space up
 WORKDIR /workspace/app
 COPY . /workspace/app
