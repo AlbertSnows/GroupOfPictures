@@ -28,8 +28,11 @@ COPY --from=build ${DEPENDENCY}/META-INF /app/META-INF
 COPY --from=build ${DEPENDENCY}/BOOT-INF/classes /app
 #WORKDIR /workspace/app
 COPY entrypoint.sh /app/entrypoint.sh
-COPY src/main/resources /src/main/resources
+COPY build/resources build/resources
 RUN chmod +x /app/entrypoint.sh
 # RUN /workspace/app/entrypoint.sh
 #ENTRYPOINT ["entrypoint.sh"]
+# Update package lists and install FFmpeg
+RUN apt-get update && apt-get install -y ffmpeg
+
 ENTRYPOINT ["/bin/bash", "/app/entrypoint.sh"]

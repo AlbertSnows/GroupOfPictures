@@ -27,3 +27,10 @@ AHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH
 
 they need to be put in the build directory, that's where
 the application is run
+
+## file not found on docker
+
+i have no idea why but this happened because
+ffmpeg wasn't installed in the docker image, I guess?
+I don't think that should be necessary right?
+oh well
