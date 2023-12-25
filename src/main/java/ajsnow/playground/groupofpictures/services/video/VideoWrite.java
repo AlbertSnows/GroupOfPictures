@@ -9,18 +9,26 @@ import com.github.kokorin.jaffree.ffmpeg.UrlOutput;
 import com.github.kokorin.jaffree.ffprobe.FFprobe;
 import com.grack.nanojson.JsonArray;
 import com.grack.nanojson.JsonObject;
+import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.ui.Model;
 
 import java.io.File;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.TreeSet;
+import java.util.function.Consumer;
 import java.util.function.IntPredicate;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import static ajsnow.playground.groupofpictures.data.Constants.SOURCE_PATH;
 import static ajsnow.playground.groupofpictures.data.Constants.STATIC_PATH;
 import static ajsnow.playground.groupofpictures.utility.rop.result.Resolvers.collapse;
 import static ajsnow.playground.groupofpictures.utility.rop.result.Resolvers.collapseToBoolean;
@@ -108,5 +116,55 @@ public class VideoWrite {
                     "Sorry about that! "));
         }
         return Result.success(clipFile);
+    }
+
+    @Contract(pure = true)
+    public static @NotNull Result<String, String>
+    tryClippingVideos(String escapedName, Path sourceVideoLocation, Model model) {
+        var fileExists = Files.exists(sourceVideoLocation);
+        if(!fileExists) {
+            model.addAttribute("errorMessage", "Requested video doesn't exist!");
+            return Result.failure("error");
+        }
+        var videoProbe = FFprobe.atPath().setInput(sourceVideoLocation);
+        var dataForFrames = videoProbe.setShowFrames(true).execute();
+        JsonArray frameList = (JsonArray) dataForFrames.getData().getValue("frames");
+        IntPredicate isIFrame = frameIndex -> {
+            var frameData = (JsonObject) frameList.get(frameIndex);
+            return frameData.get("pict_type").equals("I");
+        };
+        var iFrameIndexes = IntStream
+                .rangeClosed(0, frameList.size()-1)
+                .filter(isIFrame)
+                .boxed()
+                .collect(Collectors.toCollection(TreeSet::new));
+        var videoNameWithoutExtension = escapedName.split("\\.mp4")[0];
+        var newDirectory = STATIC_PATH + videoNameWithoutExtension;
+        var directoryResult = GOPFileHelpers.handleCreatingDirectory(newDirectory);
+        if(!directoryResult.then(collapseToBoolean())) {
+            model.addAttribute("errorMessage", directoryResult.then(collapse()));
+            return Result.failure("error");
+        }
+        Consumer<Integer> clipFile = (Integer keyframeIndex) -> {
+            var videoData = FFmpeg.atPath()
+                    .addInput(UrlInput.fromPath(sourceVideoLocation));
+            var nextIFrame = iFrameIndexes.higher(keyframeIndex);
+            JsonObject startFrameData = (JsonObject) frameList.get(keyframeIndex);
+            var outputPath = UrlOutput.toPath(Path.of(String.format(
+                    STATIC_PATH + videoNameWithoutExtension + "/%d.mp4", keyframeIndex)));
+            if(nextIFrame != null) {
+                VideoWrite.clipGOP(frameList, nextIFrame, startFrameData, videoData, outputPath);
+            } else {
+                VideoWrite.clipLastGOP(startFrameData, videoData, outputPath);
+            }
+        };
+        iFrameIndexes.forEach(clipFile);
+        List<String> clipNames = new ArrayList<>(iFrameIndexes.stream()
+                .map(index -> index + ".mp4")
+                .toList());
+//        clipNames.remove(iFrameIndexes.size() - 1);
+        model.addAttribute("clipFileNames", clipNames);
+        model.addAttribute("videoFileName", videoNameWithoutExtension);
+        return Result.success("video_sequence");
     }
 }

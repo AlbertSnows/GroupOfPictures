@@ -75,7 +75,6 @@ public class VideoController {
         var responseResult = clippingResult
                 .then(using(TypeOf.<ResponseEntity<?>>forFailures()))
                 .then(attempt(VideoRead::tryReadingVideo))
-                .then(using(TypeOf.<ResponseEntity<?>>forFailures()))
                 .then(onSuccess(byteList -> ResponseEntity.ok()
                         .header("Content-Disposition", "attachment; filename=\""+escapedIndex+"\"")
                         .body(byteList)))
@@ -89,66 +88,8 @@ public class VideoController {
             @PathVariable("videoName") String name,
             @NotNull Model model) {
         var escapedName = StringEscapeUtils.escapeJava(name);
-        var videoDirectory = "src/main/resources/source/";
-        var path = Path.of(videoDirectory + escapedName);
-        var fileExists = Files.exists(path);
-        if(!fileExists) {
-            return "error";
-        }
-        var dataForFrames = videoRead.videoSource.videoProbe
-                .setShowFrames(true)
-                .execute();
-        JsonArray frameList = (JsonArray) dataForFrames.getData().getValue("frames");
-        IntPredicate isIFrame = frameIndex -> {
-            var frameData = (JsonObject) frameList.get(frameIndex);
-            return frameData.get("pict_type").equals("I");
-        };
-        var iFrameIndexes = IntStream
-                .rangeClosed(0, frameList.size()-1)
-                .filter(isIFrame)
-                .boxed()
-                .collect(Collectors.toCollection(TreeSet::new));
-        var pathToVideo = Paths.get("src/main/resources/source/CoolVideo.mp4");
-        var clipDirectory = "src/main/resources/static/";
-        var videoNameWithoutExtension = escapedName.split("\\.mp4")[0];
-        var newDirectory = clipDirectory + videoNameWithoutExtension;
-        try {
-            var outcome = Files.createDirectories(Paths.get(newDirectory));
-        } catch (Exception ex) {
-            System.out.println("Problem creating directories! Error: " + ex.getMessage());
-            model.addAttribute("errorMessage", "Couldn't create a directory, sorry! :(");
-            return "error";
-        }
-        for(var keyframeIndex : iFrameIndexes) {
-            var videoData = FFmpeg.atPath()
-                    .addInput(UrlInput.fromPath(pathToVideo));
-            var nextIFrame = iFrameIndexes.higher(keyframeIndex);
-            if(nextIFrame != null) {
-                JsonObject startFrameData = (JsonObject) frameList.get(keyframeIndex);
-                JsonObject endFrameData = (JsonObject) frameList.get(nextIFrame);
-                String startFrameRawTime = (String) startFrameData.get("pts_time");
-                var offset = 70;
-                var possibleStartTime = (1000 * Float.parseFloat(startFrameRawTime) - offset);
-                String endFrameRawTime = (String) endFrameData.get("pts_time");
-                var endTime = (int) (1000 * Float.parseFloat(endFrameRawTime));
-                var startFrameTime = Math.max((int) possibleStartTime, 0) + "ms";
-                var endFrameTime = endTime + "ms";
-                var outputFile = UrlOutput.toPath(Path.of(String.format(
-                        "src/main/resources/static/" + videoNameWithoutExtension + "/%d.mp4", keyframeIndex)));
-                var next = videoData
-                        .addArguments("-ss", startFrameTime)
-                        .addArguments("-to", endFrameTime)
-                        .addArguments("-c:v", "copy")
-                        .addArguments("-c:a", "copy")
-                        .addOutput(outputFile);
-                next.execute();
-            }
-        }
-        List<String> clipNames = new ArrayList<>(iFrameIndexes.stream().map(index -> index + ".mp4")
-                .toList());
-        clipNames.remove(iFrameIndexes.size() - 1);
-        model.addAttribute("clipFileNames", clipNames);
-        model.addAttribute("videoFileName", videoNameWithoutExtension);
-        return "video_sequence";
+        var sourceVideoLocation = Path.of(SOURCE_PATH + escapedName);
+        var output = VideoWrite.tryClippingVideos(escapedName, sourceVideoLocation, model);
+        return output.then(collapse());
     }
 }

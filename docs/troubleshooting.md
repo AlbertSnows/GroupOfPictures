@@ -19,6 +19,11 @@ you need to do *:<port> not just port in the java command
 in the sh file
 see: https://stackoverflow.com/questions/30858312/handshake-failed-connection-prematurally-closed-error-when-debugging-solr-in-i
 
-## Files as spooky
-the spring boot resource object doesn't seem to work.
-use uhh...file i think? i'll fix it lol
+## Files are spooky
+OH MY GOD
+IT'S BECAUSE THE APPLICATION ISN'T LOOKING IN THAT 
+DIRECTORY
+AHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH
+
+they need to be put in the build directory, that's where
+the application is run
