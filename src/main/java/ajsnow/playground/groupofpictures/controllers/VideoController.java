@@ -69,17 +69,17 @@ public class VideoController {
         var escapedIndex = StringEscapeUtils.escapeJava(indexName);
         var sourceVideoLocation = Path.of(SOURCE_PATH + escapedName);
         // bonus: write a function to generalize response entity types, so I don't have to upcaste
-        return VideoWrite
-                .tryClippingVideo(escapedName, escapedIndex, sourceVideoLocation)
+        var clippingResult =  VideoWrite
+                .tryClippingVideo(escapedName, escapedIndex, sourceVideoLocation);
+        var responseResult = clippingResult
                 .then(using(TypeOf.<ResponseEntity<?>>forFailures()))
                 .then(attempt(VideoRead::tryReadingVideo))
-                .then(onFailure(str -> ResponseEntity.ok().body(str)))
                 .then(using(TypeOf.<ResponseEntity<?>>forFailures()))
                 .then(onSuccess(byteList -> ResponseEntity.ok()
                         .header("Content-Disposition", "attachment; filename=\""+escapedIndex+"\"")
                         .body(byteList)))
-                .then(using(TypeOf.<ResponseEntity<?>>forSuccesses()))
-                .then(collapse());
+                .then(using(TypeOf.<ResponseEntity<?>>forSuccesses()));
+        return responseResult.then(collapse());
     }
 
     // bonus: convert to rop

@@ -65,21 +65,15 @@ public class VideoWrite {
     public static @NotNull Result<File, ResponseEntity<Object>>
     tryClippingVideo(String escapedName, String escapedIndex, Path sourceVideoLocation) {
         var fileExists = RoutingCore.handleFileNotFound(escapedName).then(collapseToBoolean());
-        if(fileExists) {
+        if(!fileExists) {
             return Result.failure(ResponseEntity.status(HttpStatus.NOT_FOUND).body("File not found!"));
         }
         var videoNameWithoutExtension = escapedName.split("\\.mp4")[0];
-        var clipFile = new File(String.format(STATIC_PATH + videoNameWithoutExtension +"/" + escapedIndex));
-        if(!clipFile.exists()) {
-            return Result.failure(ResponseEntity.internalServerError().body("Could not find the clip. " +
-                    "This is a really bizarre bug and I haven't been able to discern the cause. " +
-                    "Sorry about that! "));
-        }
         var videoProbe = FFprobe.atPath().setInput(sourceVideoLocation);
         var dataForFrames = videoProbe.setShowFrames(true).execute();
         JsonArray frameList = (JsonArray) dataForFrames.getData().getValue("frames");
-        var createdDirectories = GOPFileHelpers.handleCreatingDirectory(escapedName);
         var newDirectory = STATIC_PATH + videoNameWithoutExtension;
+        var createdDirectories = GOPFileHelpers.handleCreatingDirectory(newDirectory);
         //non-ideal to collapse twice, but just focused on basic cleanup for now
         if(!createdDirectories.then(collapseToBoolean())) {
             return Result.failure(ResponseEntity.internalServerError().body(createdDirectories.then(collapse())));
@@ -94,6 +88,7 @@ public class VideoWrite {
                 .boxed()
                 .collect(Collectors.toCollection(TreeSet::new));
         var start = Integer.parseInt(escapedIndex.split("\\.mp4")[0]);
+        var clipFile = new File(String.format(STATIC_PATH + videoNameWithoutExtension +"/" + escapedIndex));
         if(!iFrameIndexes.contains(start)) {
             return Result.failure(ResponseEntity.status(HttpStatus.NOT_FOUND).body("Index not found!"));
         }
@@ -106,6 +101,11 @@ public class VideoWrite {
             VideoWrite.clipLastGOP(startFrameData, videoData, urlOutput);
         } else {
             VideoWrite.clipGOP(frameList, nextIFrame, startFrameData, videoData, urlOutput);
+        }
+        if(!clipFile.exists()) {
+            return Result.failure(ResponseEntity.internalServerError().body("Could not find the clip. " +
+                    "This is a really bizarre bug and I haven't been able to discern the cause. " +
+                    "Sorry about that! "));
         }
         return Result.success(clipFile);
     }

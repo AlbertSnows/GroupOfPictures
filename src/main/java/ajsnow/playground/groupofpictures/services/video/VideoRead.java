@@ -30,7 +30,6 @@ public class VideoRead {
      * @return file data
      */
     public static @NotNull Result<JsonArray, String> getFrameDataForVideo(String name) {
-//        var pathToVideo = Paths.get(SOURCE_PATH  + name);
         try (var fileInputStream = new FileInputStream(SOURCE_PATH + "CoolVideo.mp4")){
             var videoProbe = FFprobe.atPath().setInput(fileInputStream);
             var frameData = videoProbe.setShowFrames(true).execute();
