@@ -153,7 +153,7 @@ public class VideoWrite {
                 .boxed()
                 .collect(Collectors.toCollection(TreeSet::new));
         var videoNameWithoutExtension = escapedName.split("\\.mp4")[0];
-        var newDirectory = HTML_PATH + videoNameWithoutExtension;
+        var newDirectory = getHTMLPath() + videoNameWithoutExtension;
         var directoryResult = GOPFileHelpers.handleCreatingDirectory(newDirectory);
         if(!directoryResult.then(collapseToBoolean())) {
             model.addAttribute("errorMessage", directoryResult.then(collapse()));
@@ -165,7 +165,7 @@ public class VideoWrite {
             var nextIFrame = iFrameIndexes.higher(keyframeIndex);
             JsonObject startFrameData = (JsonObject) frameList.get(keyframeIndex);
             var outputPath = UrlOutput.toPath(Path.of(String.format(
-                    HTML_PATH + videoNameWithoutExtension + "/%d.mp4", keyframeIndex)));
+                    getHTMLPath() + videoNameWithoutExtension + "/%d.mp4", keyframeIndex)));
             if(nextIFrame != null) {
                 VideoWrite.clipGOP(frameList, nextIFrame, startFrameData, videoData, outputPath);
             } else {
