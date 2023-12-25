@@ -2,3 +2,5 @@
 //        var clipFilePath = new ClassPathResource(
 //                String.format("static/" + videoNameWithoutExtension +"/" + escapedIndex),
 //                getClass().getClassLoader());
+
+// Answer: problem was not with class path, I was asking for the file before creating it

@@ -32,3 +32,8 @@ i have no idea why but this happened because
 ffmpeg wasn't installed in the docker image, I guess?
 I don't think that should be necessary right?
 oh well
+
+## docker compose doesn't work?
+
+seems to have its own docker image that it doesn't
+recompile on change. run docker-compose 
