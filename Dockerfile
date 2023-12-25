@@ -10,7 +10,6 @@ FROM eclipse-temurin:17-jdk AS build
 WORKDIR /workspace/app
 COPY . /workspace/app
 
-
 # When doing a gradle clean build, we don't generally want to remake
 # /root/.gradle so this says to not rebuild it unless it changes
 RUN --mount=type=cache,target=/root/.gradle ./gradlew clean build
@@ -31,9 +30,10 @@ ARG DEPENDENCY=/workspace/app/build/dependency
 COPY --from=build ${DEPENDENCY}/BOOT-INF/lib /app/lib
 COPY --from=build ${DEPENDENCY}/META-INF /app/META-INF
 COPY --from=build ${DEPENDENCY}/BOOT-INF/classes /app
+COPY --from=build /workspace/app/build/resources build/resources
+
 #WORKDIR /workspace/app
 COPY entrypoint.sh /app/entrypoint.sh
-COPY build/resources build/resources
 RUN chmod +x /app/entrypoint.sh
 # RUN /workspace/app/entrypoint.sh
 #ENTRYPOINT ["entrypoint.sh"]
