@@ -68,7 +68,8 @@ public class VideoController {
         var escapedName = StringEscapeUtils.escapeJava(name);
         var escapedIndex = StringEscapeUtils.escapeJava(indexName);
         var sourceVideoLocation = Path.of(SOURCE_PATH + escapedName);
-        // bonus: write a function to generalize response entity types, so I don't have to upcaste
+        // bonus: write a function to generalize response entity types, so I don't have to upcast
+        // vars are not needed, but help with debugging
         var clippingResult =  VideoWrite
                 .tryClippingVideo(escapedName, escapedIndex, sourceVideoLocation);
         var responseResult = clippingResult
