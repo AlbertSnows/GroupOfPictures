@@ -8,7 +8,9 @@ There are three different ways to run the project that I'll be discussing here.
 - regular docker
 - gradle
 
-I'll list details about each below.
+I'll list details about each below. The docker ways are
+not recommended due to the time it takes to build
+the image.
 
 ## Docker Compose
 

@@ -28,8 +28,7 @@ import java.util.function.IntPredicate;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import static ajsnow.playground.groupofpictures.data.Constants.SOURCE_PATH;
-import static ajsnow.playground.groupofpictures.data.Constants.STATIC_PATH;
+import static ajsnow.playground.groupofpictures.data.Constants.*;
 import static ajsnow.playground.groupofpictures.utility.rop.result.Resolvers.collapse;
 import static ajsnow.playground.groupofpictures.utility.rop.result.Resolvers.collapseToBoolean;
 
@@ -154,7 +153,7 @@ public class VideoWrite {
                 .boxed()
                 .collect(Collectors.toCollection(TreeSet::new));
         var videoNameWithoutExtension = escapedName.split("\\.mp4")[0];
-        var newDirectory = STATIC_PATH + videoNameWithoutExtension;
+        var newDirectory = HTML_PATH + videoNameWithoutExtension;
         var directoryResult = GOPFileHelpers.handleCreatingDirectory(newDirectory);
         if(!directoryResult.then(collapseToBoolean())) {
             model.addAttribute("errorMessage", directoryResult.then(collapse()));
@@ -166,7 +165,7 @@ public class VideoWrite {
             var nextIFrame = iFrameIndexes.higher(keyframeIndex);
             JsonObject startFrameData = (JsonObject) frameList.get(keyframeIndex);
             var outputPath = UrlOutput.toPath(Path.of(String.format(
-                    STATIC_PATH + videoNameWithoutExtension + "/%d.mp4", keyframeIndex)));
+                    HTML_PATH + videoNameWithoutExtension + "/%d.mp4", keyframeIndex)));
             if(nextIFrame != null) {
                 VideoWrite.clipGOP(frameList, nextIFrame, startFrameData, videoData, outputPath);
             } else {

@@ -1,9 +1,8 @@
 # syntax=docker/dockerfile:experimental
 # https://spring.io/guides/topicals/spring-boot-docker/
 # AS build allows us to reference this context further in the file
+# less frequent at the top, more frequent changes at the bottom
 FROM eclipse-temurin:17-jdk AS build
-
-RUN apt-get update && apt-get install -y ffmpeg && apt-get clean
 
 # set work space up
 WORKDIR /workspace/app
@@ -23,6 +22,7 @@ RUN mkdir -p build/dependency && (cd build/dependency; jar -xf ../libs/*-SNAPSHO
 FROM eclipse-temurin:17-jdk
 # volume specifices where external(persistent) data is to be stored
 VOLUME /tmp
+RUN apt-get update && apt-get install -y ffmpeg && apt-get clean
 # all files we want to grab will be under this directory from build
 ARG DEPENDENCY=/workspace/app/build/dependency
 # copy those files from build, and put them in these corresponding folders
