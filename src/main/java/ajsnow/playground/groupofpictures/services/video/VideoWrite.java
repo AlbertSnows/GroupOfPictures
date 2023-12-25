@@ -35,14 +35,16 @@ import static ajsnow.playground.groupofpictures.utility.rop.result.Resolvers.col
 
 @Service
 public class VideoWrite {
-
-    public static final String PTS_TIME = "pts_time";
-    public static final String PKT_PTS_TIME = "pkt_pts_time";
+    // bonus: this should not be necessary, would need to figure out dev configs
+    public static @NotNull String getTimeAccessor() {
+        String os = System.getProperty("os.name").toLowerCase();
+        return os.contains("win") ? "pts_time" : "pkt_pts_time";
+    }
 
     public static void clipLastGOP(@NotNull JsonObject startFrameData,
                                    @NotNull FFmpeg videoData,
                                    UrlOutput urlOutput) {
-        String startFrameRawTime = (String) startFrameData.get(PKT_PTS_TIME);
+        String startFrameRawTime = (String) startFrameData.get(getTimeAccessor());
         var offset = 70;
         var possibleStartTime = (1000 * Float.parseFloat(startFrameRawTime) - offset);
         var startFrameTime = Math.max((int) possibleStartTime, 0) + "ms";
@@ -62,10 +64,10 @@ public class VideoWrite {
                                @NotNull FFmpeg videoData,
                                UrlOutput urlOutput) {
         JsonObject endFrameData = (JsonObject) frameList.get(nextIFrame);
-        String startFrameRawTime = (String) startFrameData.get(PKT_PTS_TIME);
+        String startFrameRawTime = (String) startFrameData.get(getTimeAccessor());
         var offset = 70;
         var possibleStartTime = (1000 * Float.parseFloat(startFrameRawTime) - offset);
-        String endFrameRawTime = (String) endFrameData.get(PKT_PTS_TIME);
+        String endFrameRawTime = (String) endFrameData.get(getTimeAccessor());
         var endTime = (int) (1000 * Float.parseFloat(endFrameRawTime));
         var startFrameTime = Math.max((int) possibleStartTime, 0) + "ms";
         var endFrameTime = endTime + "ms";
@@ -108,7 +110,7 @@ public class VideoWrite {
                 .boxed()
                 .collect(Collectors.toCollection(TreeSet::new));
         var start = Integer.parseInt(escapedIndex.split("\\.mp4")[0]);
-        var clipFile = new File(String.format(STATIC_PATH + videoNameWithoutExtension +"/" + escapedIndex));
+        var clipFilePath = String.format(STATIC_PATH + videoNameWithoutExtension +"/" + escapedIndex);
         if(!iFrameIndexes.contains(start)) {
             return Result.failure(ResponseEntity.status(HttpStatus.NOT_FOUND).body("Index not found!"));
         }
@@ -122,6 +124,7 @@ public class VideoWrite {
         } else {
             VideoWrite.clipGOP(frameList, nextIFrame, startFrameData, videoData, urlOutput);
         }
+        var clipFile = new File(clipFilePath);
         if(!clipFile.exists()) {
             return Result.failure(ResponseEntity.internalServerError().body("Could not find the clip. " +
                     "This is a really bizarre bug and I haven't been able to discern the cause. " +
