@@ -13,6 +13,7 @@ not recommended due to the time it takes to build
 the image.
 
 ## Docker Compose
+```docker compose up --build``` *should* be the command
 
 You'll need to have Docker installed on your system. Docker Compose is typically bundled with Docker, but you should
 verify its availability.
