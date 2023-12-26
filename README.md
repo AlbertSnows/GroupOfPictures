@@ -20,7 +20,7 @@ you'll have to try again. In the meantime, you can
 use `./gradlew bootRun` to spin up the API and
 run the project. Endpoint is `localhost:8080`.
 
-## TODO
-documentation X -> skipping, I've 
+## Additional work
 
-X get working with docker X mostly done, running into carriage return issues
+### documentation 
+skipping because I feel worn out by the other stuff
