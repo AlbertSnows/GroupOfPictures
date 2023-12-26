@@ -8,7 +8,15 @@ to install ffmpeg for the first time and also because of
 carriage return antics. 
 
 To fix ffmpeg: There isn't one that I know of. You have to
-keep trying until it works. 
+keep building docker until it works. 
+
+As a reminder, the commands are
+
+`docker compose up --build` (may not work, was inconsistent) or
+
+`docker build -t app .` + 
+
+`docker run -p 8080:8080 app`
 
 To fix "not found" errors AKA carriage return antics: All
 files need to be in "LF" format to work correctly. You can
