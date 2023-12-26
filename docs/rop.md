@@ -2,7 +2,9 @@
 
 TIL ROP also stands for return oriented programming.
 Alas, the limitations of language. Anyways, if I have
-time I'll write more about this. ROP is a programming 
+time I'll write more about this. 
+
+ROP is a programming 
 paradigm that aligns with how I've come to think about
 software design. Error states are not just bizzare, rare
 exceptions; they're states of your program and should 
