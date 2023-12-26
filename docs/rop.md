@@ -18,7 +18,8 @@ I will probably come back to this after the canvas project
 though. 
 
 In the meantime, 
-here are links to both the resources I pulled from
+here are links to both the resources I pulled from during
+previous time spent with ROP
 and more info about ROP conceptually. 
 
 rop file sources: 
