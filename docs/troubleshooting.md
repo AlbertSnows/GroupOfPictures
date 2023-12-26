@@ -43,3 +43,13 @@ carriage return issue
 https://stackoverflow.com/questions/14219092/bash-script-bin-bashm-bad-interpreter-no-such-file-or-directory
 
 command: `find . -name "*.java" -exec dos2unix {} \;`
+
+## tons of 'not found' errors
+it's carriage return
+it's ALWAYS CARRIAGE RETURN
+AHHHHHHHHHHHHHHHHHHHHHHHHHHHHH
+
+git config --global core.autocrlf false
+
+git config --global core.eol lf
+
