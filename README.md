@@ -30,3 +30,6 @@ run the project. Endpoint is `localhost:8080`.
 
 ### documentation 
 skipping because I feel worn out by the other stuff
+
+### tests
+same problem, too much time spent on functionality to implement tests
