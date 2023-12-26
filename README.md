@@ -23,9 +23,7 @@ files need to be in "LF" format to work correctly. You can
 run a dox2unix command to fix this, or set your git to use
 LF globally, or something else. 
 
-In which case,
-you'll have to try again. In the meantime, you can
-use `./gradlew bootRun` to spin up the API and
+You can also use `./gradlew bootRun` to spin up the API and
 run the project. Endpoint is `localhost:8080`.
 
 ## Additional work
