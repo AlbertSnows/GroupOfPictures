@@ -40,4 +40,4 @@ RUN chmod +x /app/entrypoint.sh
 # Update package lists and install FFmpeg
 
 
-#ENTRYPOINT ["/bin/bash", "/app/entrypoint.sh"]
+ENTRYPOINT ["/bin/bash", "/app/entrypoint.sh"]
