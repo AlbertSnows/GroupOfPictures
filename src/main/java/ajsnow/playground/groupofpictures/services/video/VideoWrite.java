@@ -4,6 +4,7 @@ import ajsnow.playground.groupofpictures.services.routing.RoutingCore;
 import ajsnow.playground.groupofpictures.utility.GOPFileHelpers;
 import ajsnow.playground.groupofpictures.utility.rop.result.Result;
 import com.github.kokorin.jaffree.ffmpeg.FFmpeg;
+import com.github.kokorin.jaffree.ffmpeg.FFmpegResult;
 import com.github.kokorin.jaffree.ffmpeg.UrlInput;
 import com.github.kokorin.jaffree.ffmpeg.UrlOutput;
 import com.github.kokorin.jaffree.ffprobe.FFprobe;
@@ -19,42 +20,55 @@ import org.springframework.ui.Model;
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.TreeSet;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.IntPredicate;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static ajsnow.playground.groupofpictures.data.Constants.*;
+import static ajsnow.playground.groupofpictures.utility.rop.result.Introducers.*;
 import static ajsnow.playground.groupofpictures.utility.rop.result.Resolvers.collapse;
 import static ajsnow.playground.groupofpictures.utility.rop.result.Resolvers.collapseToBoolean;
+import static ajsnow.playground.groupofpictures.utility.rop.wrappers.Piper.pipe;
 
 @Service
 public class VideoWrite {
     // bonus: this should not be necessary, would need to figure out dev configs
+    // bonus: add formal logging system
     public static @NotNull String getTimeAccessor() {
         String os = System.getProperty("os.name").toLowerCase();
         return os.contains("win") ? "pts_time" : "pkt_pts_time";
     }
 
-    public static void clipLastGOP(@NotNull JsonObject startFrameData,
-                                   @NotNull FFmpeg videoData,
-                                   UrlOutput urlOutput) {
-        String startFrameRawTime = (String) startFrameData.get(getTimeAccessor());
-        var offset = 70;
-        var possibleStartTime = (1000 * Float.parseFloat(startFrameRawTime) - offset);
-        var startFrameTime = Math.max((int) possibleStartTime, 0) + "ms";
-        var extractGOP = videoData
+    public static Result<FFmpegResult, String> handleGOPExecution(FFmpeg extractGOP) {
+        Function<Exception, String> log_failure = (Exception ex) -> {
+            var message = "Creation error! Error: " + ex.getMessage();
+            System.out.println(message);
+            return message;
+        };
+        return pipe(extractGOP)
+                .then(tryTo(FFmpeg::execute, log_failure))
+                .resolve();
+    }
+
+    public static Result<FFmpegResult, String> clipLastGOP(@NotNull JsonObject startFrameData,
+                                                           @NotNull FFmpeg videoData,
+                                                           UrlOutput urlOutput) {
+        var startFrameTime = pipe(startFrameData)
+                .then(obj -> (String) obj.get(getTimeAccessor()))
+                .then(rawTime -> (1000 * Float.parseFloat(rawTime) - OFFSET))
+                .then(Math::round)
+                .then(possibleTime -> Math.max(possibleTime, 0) + "ms")
+                .resolve();
+        var GOPDataAction = videoData
                 .addArguments("-ss", startFrameTime)
                 .addOutput(urlOutput);
-        try {
-            extractGOP.execute();
-        } catch(Exception ex) {
-            System.out.println("Creation error! Error: " + ex.getMessage());
-        }
+        return VideoWrite.handleGOPExecution(GOPDataAction);
+
     }
 
     public static void clipGOP(@NotNull JsonArray frameList,
