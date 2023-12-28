@@ -191,8 +191,8 @@ public interface Introducers {
      * on specific exception types.
      * @param throwingFunction function that may fail
      * @param exceptionMapper maps the exception to the failure type
-     * @param <IS> input type
-     * @param <OS> output type
+     * @param <I> input type
+     * @param <OS> output success  type
      * @param <X> exception type
      * @param <F> failure type
      * @return df(IS -> R(OS, F)) where x is the input type passed to throwingFunction
@@ -200,8 +200,8 @@ public interface Introducers {
      * via the exceptionMapper
      */
     @Contract(pure = true)
-    static <IS, OS, X extends Exception, F> @NotNull Function<IS, Result<OS, F>>
-    tryTo(ThrowingLambdas.ThrowingFunction<IS, OS, X> throwingFunction,
+    static <I, OS, X extends Exception, F> @NotNull Function<I, Result<OS, F>>
+    tryTo(ThrowingLambdas.ThrowingFunction<I, OS, X> throwingFunction,
           Function<Exception, F> exceptionMapper) {
         return input -> {
             try {
@@ -229,8 +229,8 @@ public interface Introducers {
      * Note that idiomatic handling of Exceptions as failure type does allow specialised catch blocks
      * on specific exception types.
      * @param throwingFunction function that throws type X
-     * @param <IS> input type
-     * @param <OS> output type
+     * @param <IS> input success type
+     * @param <OS> output success type
      * @param <X> exception type
      * @return dF(IS -> R(OS, Exception))
      * input is passed to the throwing function,

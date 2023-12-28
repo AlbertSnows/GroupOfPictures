@@ -95,19 +95,18 @@ public interface Transformers {
      * to that success - generating a new Result - and returns that Result. Otherwise, returns the
      * original failure.
      * @param mappingFunction to use on success
-     * @param <InputSuccess> input success
-     * @param <OutputSuccess> output success
-     * @param <WideFailure> parent failure type
-     * @param <NarrowFailure> child failure type
-     * @return dF(R(InputSuccess, WF) -> R(OutputSuccess, WF))
+     * @param <IS> input success
+     * @param <OS> output success
+     * @param <WF> parent (wide) failure type
+     * @param <NF> child (narrow) failure type
+     * @return dF(R(IS, WF) -> R(OS, WF))
      */
     @Contract(pure = true)
-    static <InputSuccess, OutputSuccess, WideFailure, NarrowFailure extends WideFailure> @NotNull
-            Function<Result<InputSuccess, WideFailure>, Result<OutputSuccess, WideFailure>>
-    attempt(Function<InputSuccess, Result<OutputSuccess, NarrowFailure>> mappingFunction) {
-        Function<NarrowFailure, WideFailure> upcaster = HigherOrderFunctions::upcast;
-        Function<Result<OutputSuccess, NarrowFailure>, Result<OutputSuccess, WideFailure>> upcastOnFailure
-                = onFailure(upcaster);
+    static <IS, OS, WF, NF extends WF> @NotNull
+            Function<Result<IS, WF>, Result<OS, WF>>
+    attempt(Function<IS, Result<OS, NF>> mappingFunction) {
+        Function<NF, WF> upcaster = HigherOrderFunctions::upcast;
+        Function<Result<OS, NF>, Result<OS, WF>> upcastOnFailure = onFailure(upcaster);
         return r -> r.either(mappingFunction.andThen(upcastOnFailure), Result::failure);
     }
 

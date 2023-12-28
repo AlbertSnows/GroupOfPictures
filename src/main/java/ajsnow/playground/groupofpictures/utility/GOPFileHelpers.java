@@ -5,13 +5,16 @@ import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
-import java.nio.file.Paths;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Function;
 import java.util.function.Predicate;
 
-import static ajsnow.playground.groupofpictures.data.Constants.STATIC_PATH;
+import static ajsnow.playground.groupofpictures.utility.rop.result.Introducers.tryTo;
+import static ajsnow.playground.groupofpictures.utility.rop.wrappers.Piper.pipe;
 
 public class GOPFileHelpers {
     // not needed
@@ -24,12 +27,11 @@ public class GOPFileHelpers {
         };
     }
 
-    public static @NotNull Result<String, String> handleCreatingDirectory(@NotNull String newDirectory) {
-        try {
-            java.nio.file.Files.createDirectories(Paths.get(newDirectory));
-            return Result.success("Directory created!");
-        } catch (Exception ex) {
-            return Result.failure("Couldn't create a directory! Error: " + ex.getMessage());
-        }
+    public static Result<Path, String> handleCreatingDirectory(@NotNull Path desiredDirectory) {
+        Function<Exception, String> recordException =
+                ex -> "Couldn't create a directory! Error: " + ex.getMessage();
+        return pipe(desiredDirectory)
+                .then(tryTo(Files::createDirectories, recordException))
+                .resolve();
     }
 }
