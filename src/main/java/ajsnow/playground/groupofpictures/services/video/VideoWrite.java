@@ -3,6 +3,7 @@ package ajsnow.playground.groupofpictures.services.video;
 import ajsnow.playground.groupofpictures.services.routing.RoutingCore;
 import ajsnow.playground.groupofpictures.utility.GOPFileHelpers;
 import ajsnow.playground.groupofpictures.utility.rop.result.Result;
+import ajsnow.playground.groupofpictures.utility.rop.result.TypeOf;
 import ajsnow.playground.groupofpictures.utility.rop.wrappers.Piper;
 import com.github.kokorin.jaffree.ffmpeg.FFmpeg;
 import com.github.kokorin.jaffree.ffmpeg.FFmpegResult;
@@ -11,6 +12,7 @@ import com.github.kokorin.jaffree.ffmpeg.UrlOutput;
 import com.github.kokorin.jaffree.ffprobe.FFprobe;
 import com.grack.nanojson.JsonArray;
 import com.grack.nanojson.JsonObject;
+import org.apache.coyote.Response;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.http.HttpStatus;
@@ -23,6 +25,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.TreeSet;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
@@ -109,11 +112,11 @@ public class VideoWrite {
      * @return ...
      */
     public static @NotNull Result<FFmpegResult, String>
-    clipGOP(@NotNull JsonArray frameList,
-            Integer nextIFrame,
-            @NotNull JsonObject startFrameData,
+    clipGOP(@NotNull JsonObject startFrameData,
             @NotNull FFmpeg videoData,
-            UrlOutput urlOutput) {
+            UrlOutput urlOutput,
+            @NotNull JsonArray frameList,
+            Integer nextIFrame) {
         BiFunction<String, String, FFmpeg> buildGOPDataAction = (startTime, endTime) -> videoData
                 .addArguments("-ss", startTime)
                 .addArguments("-to", endTime)
@@ -136,54 +139,76 @@ public class VideoWrite {
                 .then(attempt(VideoWrite::handleGOPExecution));
     }
 
-    public static @NotNull Result<File, ResponseEntity<Object>>
-    tryClippingVideo(String escapedName, String escapedIndex, Path sourceVideoLocation) {
-        var fileExists = RoutingCore.handleFileNotFound(escapedName).then(collapseToBoolean()).resolve();
-        if(!fileExists) {
-            return Result.failure(ResponseEntity.status(HttpStatus.NOT_FOUND).body("File not found!"));
+    public static @NotNull Result<File, String>
+    tryClippingVideo(String escapedName, String escapedIndex) {
+        var sourceVideoLocation = pipe(SOURCE_PATH + escapedName)
+                .then(RoutingCore::handleFileNotFound)
+                .resolve()
+                .resolve();
+        if(!sourceVideoLocation.then(collapseToBoolean())) {
+            return Result.failure("File not found!");
         }
-        var videoNameWithoutExtension = escapedName.split("\\.mp4")[0];
-        var videoProbe = FFprobe.atPath().setInput(sourceVideoLocation);
-        var dataForFrames = videoProbe.setShowFrames(true).execute();
-        JsonArray frameList = (JsonArray) dataForFrames.getData().getValue("frames");
-        var newDirectory = STATIC_PATH + videoNameWithoutExtension;
-        var createdDirectories = GOPFileHelpers.handleCreatingDirectory(Path.of(newDirectory));
-        //non-ideal to collapse twice, but just focused on basic cleanup for now
-        if(!createdDirectories.then(collapseToBoolean())) {
-            return Result.failure(ResponseEntity.internalServerError()
-                    .body(createdDirectories.then(onSuccess(__ -> "Directory created")).then(collapse())));
-        }
-        IntPredicate isIFrame = frameIndex -> {
-            var frameData = (JsonObject) frameList.get(frameIndex);
-            return frameData.get("pict_type").equals("I");
-        };
-        var iFrameIndexes = IntStream
-                .rangeClosed(0, frameList.size()-1)
-                .filter(isIFrame)
-                .boxed()
-                .collect(Collectors.toCollection(TreeSet::new));
-        var start = Integer.parseInt(escapedIndex.split("\\.mp4")[0]);
-        var clipFilePath = String.format(STATIC_PATH + videoNameWithoutExtension +"/" + escapedIndex);
-        if(!iFrameIndexes.contains(start)) {
-            return Result.failure(ResponseEntity.status(HttpStatus.NOT_FOUND).body("Index not found!"));
-        }
-        var outputPath = Path.of(newDirectory + "/" + escapedIndex);
-        var urlOutput = UrlOutput.toPath(outputPath);
+        return Result.success(new File(""));
+//        var frameList = pipe(sourceVideoLocation)
+//                .then(location -> FFprobe.atPath().setInput(location))
+//                .then(probe -> probe.setShowFrames(true).execute())
+//                .then(frameData -> frameData.getData().getValue("frames"))
+//                .then(castTo(JsonArray.class))
+//                .then(onFailure(__ -> "Failed to cast"))
+//                .resolve();
+//        var newDirectory = pipe(escapedName)
+//                .then(name -> name.split("\\.mp4")[0])
+//                .then(nameWithoutExtension -> STATIC_PATH + nameWithoutExtension);
+//        //todo: connect with below
+//        var createdDirectory = newDirectory
+//                .then(Path::of)
+//                .then(GOPFileHelpers::handleCreatingDirectory).resolve()
+//                .then(onFailure(err -> ResponseEntity.internalServerError().body(err)))
+//                .resolve()
+//                .then(collapseToBoolean());
+//        if(!createdDirectory) {
+//            return Result.failure("Error creating directories");
+//        }
+//        IntPredicate isIFrame = frameIndex -> {
+//            var frameData = (JsonObject) frameList.get(frameIndex);
+//            return frameData.get("pict_type").equals("I");
+//        };
+//        var iFrameIndexes = IntStream
+//                .rangeClosed(0, frameList.size()-1)
+//                .filter(isIFrame)
+//                .boxed()
+//                .collect(Collectors.toCollection(TreeSet::new));
+//        var start = pipe(escapedIndex)
+//                .then(index -> index.split("\\.mp4")[0])
+//                .then(Integer::parseInt).resolve();
+//        return pipe(STATIC_PATH + videoNameWithoutExtension +"/" + escapedIndex)
+//                .then(String::format)
+//                .then(ifFalse(clipFilePath -> !iFrameIndexes.contains(start), "Index not found!"))
+//                .then(onSuccessDo(__ -> writeClip(newDirectory, escapedIndex, iFrameIndexes, start, sourceVideoLocation, frameList)))
+//                .then(onSuccess(File::new))
+//                .then(attempt(ifFalse(
+//                        File::exists,
+//                        __ -> "Couldn't find clip file after creation!")))
+//                .then(using(TypeOf.<Object>forFailures()))
+//                .then(onFailure(err -> ResponseEntity.internalServerError().body(err)))
+//                .resolve();
+    }
+
+    private static void writeClip(String newDirectory,
+                                  String escapedIndex,
+                                  @NotNull TreeSet<Integer> iFrameIndexes,
+                                  Integer start,
+                                  Path sourceVideoLocation,
+                                  @NotNull JsonArray frameList) {
+        var urlOutput = UrlOutput.toPath(Path.of(newDirectory + "/" + escapedIndex));
         var nextIFrame = iFrameIndexes.higher(start);
         var videoData = FFmpeg.atPath().addInput(UrlInput.fromPath(sourceVideoLocation));
-        JsonObject startFrameData = (JsonObject) frameList.get(start);
-        if (nextIFrame == null) {
-            VideoWrite.clipLastGOP(startFrameData, videoData, urlOutput);
-        } else {
-            VideoWrite.clipGOP(frameList, nextIFrame, startFrameData, videoData, urlOutput);
-        }
-        var clipFile = new File(clipFilePath);
-        if(!clipFile.exists()) {
-            return Result.failure(ResponseEntity.internalServerError().body("Could not find the clip. " +
-                    "This is a really bizarre bug and I haven't been able to discern the cause. " +
-                    "Sorry about that! "));
-        }
-        return Result.success(clipFile);
+        var startFrameData = (JsonObject) frameList.get(start);
+        pipe(start)
+                .then(ifNull(iFrameIndexes::higher, null))
+                .then(onSuccessDo(__ -> VideoWrite.clipGOP(startFrameData, videoData, urlOutput, frameList, nextIFrame)))
+                .then(onFailureDo(__ -> VideoWrite.clipLastGOP(startFrameData, videoData, urlOutput)))
+                .resolve();
     }
 
     @Contract(pure = true)
@@ -209,7 +234,7 @@ public class VideoWrite {
         var videoNameWithoutExtension = escapedName.split("\\.mp4")[0];
         var newDirectory = getHTMLPath() + videoNameWithoutExtension;
         var directoryResult = GOPFileHelpers.handleCreatingDirectory(Path.of(newDirectory));
-        if(!directoryResult.then(collapseToBoolean())) {
+        if(!directoryResult.resolve().then(collapseToBoolean())) {
             model.addAttribute("errorMessage", directoryResult
                     .then(onSuccess(__ -> "Created directory")).then(collapse()));
             return Result.failure("error");
@@ -222,7 +247,7 @@ public class VideoWrite {
             var outputPath = UrlOutput.toPath(Path.of(String.format(
                     getHTMLPath() + videoNameWithoutExtension + "/%d.mp4", keyframeIndex)));
             if(nextIFrame != null) {
-                VideoWrite.clipGOP(frameList, nextIFrame, startFrameData, videoData, outputPath);
+                VideoWrite.clipGOP(startFrameData, videoData, outputPath, frameList, nextIFrame);
             } else {
                 VideoWrite.clipLastGOP(startFrameData, videoData, outputPath);
             }
