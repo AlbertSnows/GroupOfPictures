@@ -53,21 +53,22 @@ public class VideoController {
     @GetMapping("/{videoName}/group-of-pictures/{groupIndex}")
     public ResponseEntity<?> streamGroupVideo(@PathVariable("videoName") String name,
                                               @PathVariable("groupIndex") @NotNull String indexName) {
-        var escapedName = StringEscapeUtils.escapeJava(name);
-        var escapedIndex = StringEscapeUtils.escapeJava(indexName);
-        var sourceVideoLocation = Path.of(SOURCE_PATH + escapedName);
         // bonus: write a function to generalize response entity types, so I don't have to upcast
         // vars are not needed, but help with debugging
-        var clippingResult =  VideoWrite
-                .tryClippingVideo(escapedName, escapedIndex, sourceVideoLocation);
-        var responseResult = clippingResult
-                .then(using(TypeOf.<ResponseEntity<?>>forFailures()))
-                .then(attempt(VideoRead::tryReadingVideo))
+        // todo: make a map for the different error string result types
+        var escapedIndex = StringEscapeUtils.escapeJava(indexName);
+        return pipe(name)
+                .then(StringEscapeUtils::escapeJava)
+                .then(escapedName -> VideoWrite.tryClippingVideo(escapedName, escapedIndex))
+                .then(attempt(file -> VideoRead.tryReadingVideo(file).resolve()))
                 .then(onSuccess(byteList -> ResponseEntity.ok()
                         .header("Content-Disposition", "attachment; filename=\""+escapedIndex+"\"")
                         .body(byteList)))
-                .then(using(TypeOf.<ResponseEntity<?>>forSuccesses()));
-        return responseResult.then(collapse());
+                .then(onFailure(err -> ResponseEntity.internalServerError().body(err)))
+                .then(using(TypeOf.<ResponseEntity<?>>forFailures()))
+                .then(using(TypeOf.<ResponseEntity<?>>forSuccesses()))
+                .then(collapse())
+                .resolve();
     }
 
     // bonus: convert to rop
