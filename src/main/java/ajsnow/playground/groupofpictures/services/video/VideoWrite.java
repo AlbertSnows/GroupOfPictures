@@ -138,7 +138,7 @@ public class VideoWrite {
 
     public static @NotNull Result<File, ResponseEntity<Object>>
     tryClippingVideo(String escapedName, String escapedIndex, Path sourceVideoLocation) {
-        var fileExists = RoutingCore.handleFileNotFound(escapedName).then(collapseToBoolean());
+        var fileExists = RoutingCore.handleFileNotFound(escapedName).then(collapseToBoolean()).resolve();
         if(!fileExists) {
             return Result.failure(ResponseEntity.status(HttpStatus.NOT_FOUND).body("File not found!"));
         }
