@@ -1,7 +1,7 @@
 package ajsnow.playground.groupofpictures.services.routing;
 
 import ajsnow.playground.groupofpictures.utility.rop.result.Result;
-import org.jetbrains.annotations.NotNull;
+import ajsnow.playground.groupofpictures.utility.rop.wrappers.Piper;
 
 import java.io.File;
 import java.util.HashSet;
@@ -14,13 +14,12 @@ import static ajsnow.playground.groupofpictures.utility.rop.result.Transformers.
 import static ajsnow.playground.groupofpictures.utility.rop.wrappers.Piper.pipe;
 
 public class RoutingCore {
-    public static @NotNull Result<String, String> handleFileNotFound(String name) {
+    public static Piper<Result<String, String>> handleFileNotFound(String name) {
         return pipe(SOURCE_PATH)
                 .then(File::new)
                 .then(ifFalse(File::exists, "No source directory!"))
                 .then(onSuccess(folder -> new HashSet<>(List.of(Objects.requireNonNull(folder.list())))))
                 .then(onSuccess(ifFalse(files -> files.contains(name), "File not found!")))
-                .then(onSuccess(__ -> name))
-                .resolve();
+                .then(onSuccess(__ -> name));
     }
 }

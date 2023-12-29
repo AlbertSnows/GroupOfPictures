@@ -38,7 +38,7 @@ public class VideoController {
     public ResponseEntity<?> getFrameData(@PathVariable("videoName") String name) {
         var escapedName = StringEscapeUtils.escapeJava(name);
         return pipe(escapedName)
-                .then(RoutingCore::handleFileNotFound)
+                .then(RoutingCore::handleFileNotFound).resolve()
                 .then(attempt(VideoRead::getFrameDataForVideo))
                 .then(using(TypeOf.<Object>forSuccesses()))
                 .then(using(TypeOf.<Object>forFailures()))

@@ -94,6 +94,7 @@ public interface Transformers {
      * Returns a function which takes a Result and, if it's a success, applies the provided function
      * to that success - generating a new Result - and returns that Result. Otherwise, returns the
      * original failure.
+     * In other words, if you're given a Result and want to map the success, use attempt
      * @param mappingFunction to use on success
      * @param <IS> input success
      * @param <OS> output success
