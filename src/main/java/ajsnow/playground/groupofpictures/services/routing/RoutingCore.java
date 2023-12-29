@@ -9,17 +9,18 @@ import java.util.List;
 import java.util.Objects;
 
 import static ajsnow.playground.groupofpictures.data.Constants.SOURCE_PATH;
+import static ajsnow.playground.groupofpictures.utility.rop.result.Introducers.ifFalse;
+import static ajsnow.playground.groupofpictures.utility.rop.result.Transformers.onSuccess;
+import static ajsnow.playground.groupofpictures.utility.rop.wrappers.Piper.pipe;
 
 public class RoutingCore {
     public static @NotNull Result<String, String> handleFileNotFound(String name) {
-        var folder = new File(SOURCE_PATH);
-        if(!folder.exists()) {
-            return Result.failure("No source directory!");
-        }
-        var files = new HashSet<>(List.of(Objects.requireNonNull(folder.list())));
-        var videoExists = files.contains(name);
-        return videoExists ?
-                Result.success(name) :
-                Result.failure("File not found!");
+        return pipe(SOURCE_PATH)
+                .then(File::new)
+                .then(ifFalse(File::exists, "No source directory!"))
+                .then(onSuccess(folder -> new HashSet<>(List.of(Objects.requireNonNull(folder.list())))))
+                .then(onSuccess(ifFalse(files -> files.contains(name), "File not found!")))
+                .then(onSuccess(__ -> name))
+                .resolve();
     }
 }

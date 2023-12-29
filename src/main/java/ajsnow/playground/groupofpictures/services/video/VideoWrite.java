@@ -33,6 +33,7 @@ import static ajsnow.playground.groupofpictures.data.Constants.*;
 import static ajsnow.playground.groupofpictures.utility.rop.result.Introducers.*;
 import static ajsnow.playground.groupofpictures.utility.rop.result.Resolvers.collapse;
 import static ajsnow.playground.groupofpictures.utility.rop.result.Resolvers.collapseToBoolean;
+import static ajsnow.playground.groupofpictures.utility.rop.result.Transformers.onSuccess;
 import static ajsnow.playground.groupofpictures.utility.rop.wrappers.Piper.pipe;
 
 @Service
@@ -108,10 +109,11 @@ public class VideoWrite {
         var dataForFrames = videoProbe.setShowFrames(true).execute();
         JsonArray frameList = (JsonArray) dataForFrames.getData().getValue("frames");
         var newDirectory = STATIC_PATH + videoNameWithoutExtension;
-        var createdDirectories = GOPFileHelpers.handleCreatingDirectory(newDirectory);
+        var createdDirectories = GOPFileHelpers.handleCreatingDirectory(Path.of(newDirectory));
         //non-ideal to collapse twice, but just focused on basic cleanup for now
         if(!createdDirectories.then(collapseToBoolean())) {
-            return Result.failure(ResponseEntity.internalServerError().body(createdDirectories.then(collapse())));
+            return Result.failure(ResponseEntity.internalServerError()
+                    .body(createdDirectories.then(onSuccess(__ -> "Directory created")).then(collapse())));
         }
         IntPredicate isIFrame = frameIndex -> {
             var frameData = (JsonObject) frameList.get(frameIndex);
@@ -168,9 +170,10 @@ public class VideoWrite {
                 .collect(Collectors.toCollection(TreeSet::new));
         var videoNameWithoutExtension = escapedName.split("\\.mp4")[0];
         var newDirectory = getHTMLPath() + videoNameWithoutExtension;
-        var directoryResult = GOPFileHelpers.handleCreatingDirectory(newDirectory);
+        var directoryResult = GOPFileHelpers.handleCreatingDirectory(Path.of(newDirectory));
         if(!directoryResult.then(collapseToBoolean())) {
-            model.addAttribute("errorMessage", directoryResult.then(collapse()));
+            model.addAttribute("errorMessage", directoryResult
+                    .then(onSuccess(__ -> "Created directory")).then(collapse()));
             return Result.failure("error");
         }
         Consumer<Integer> clipFile = (Integer keyframeIndex) -> {
