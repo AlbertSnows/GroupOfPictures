@@ -3,6 +3,7 @@ package ajsnow.playground.groupofpictures.services.video;
 import ajsnow.playground.groupofpictures.services.routing.RoutingCore;
 import ajsnow.playground.groupofpictures.utility.GOPFileHelpers;
 import ajsnow.playground.groupofpictures.utility.rop.result.Result;
+import ajsnow.playground.groupofpictures.utility.rop.wrappers.Piper;
 import com.github.kokorin.jaffree.ffmpeg.FFmpeg;
 import com.github.kokorin.jaffree.ffmpeg.FFmpegResult;
 import com.github.kokorin.jaffree.ffmpeg.UrlInput;
@@ -23,6 +24,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.TreeSet;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.IntPredicate;
@@ -30,10 +32,12 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static ajsnow.playground.groupofpictures.data.Constants.*;
+import static ajsnow.playground.groupofpictures.utility.rop.result.Combiners.combineWith;
 import static ajsnow.playground.groupofpictures.utility.rop.result.Introducers.*;
 import static ajsnow.playground.groupofpictures.utility.rop.result.Resolvers.collapse;
 import static ajsnow.playground.groupofpictures.utility.rop.result.Resolvers.collapseToBoolean;
-import static ajsnow.playground.groupofpictures.utility.rop.result.Transformers.onSuccess;
+import static ajsnow.playground.groupofpictures.utility.rop.result.Transformers.*;
+import static ajsnow.playground.groupofpictures.utility.rop.result.TypeOf.using;
 import static ajsnow.playground.groupofpictures.utility.rop.wrappers.Piper.pipe;
 
 @Service
@@ -65,24 +69,36 @@ public class VideoWrite {
 
     /**
      * @param startFrameData ...
+     * @return ...
+     */
+    static Piper<Result<String, String>> calcStartFrameData(JsonObject startFrameData) {
+        return pipe(startFrameData)
+                .then(startFrameJson -> startFrameJson.get(getTimeAccessor()))
+                .then(castTo(String.class))
+                .then(onSuccess(startRawTime -> 1000 * Float.parseFloat(startRawTime) - OFFSET))
+                .then(onSuccess(Math::round))
+                .then(onSuccess(possibleStartTime -> Math.max(possibleStartTime, 0) + "ms"))
+                .then(onFailure(__ -> "Start frame casting failure!"));
+    }
+
+    /**
+     * @param startFrameData ...
      * @param videoData ...
      * @param urlOutput ...
      * @return ...
      */
-    public static Result<FFmpegResult, String> clipLastGOP(@NotNull JsonObject startFrameData,
-                                                           @NotNull FFmpeg videoData,
-                                                           UrlOutput urlOutput) {
-        var startFrameTime = pipe(startFrameData)
-                .then(obj -> (String) obj.get(getTimeAccessor()))
-                .then(rawTime -> (1000 * Float.parseFloat(rawTime) - OFFSET))
-                .then(Math::round)
-                .then(possibleTime -> Math.max(possibleTime, 0) + "ms")
-                .resolve();
-        var GOPDataAction = videoData
+    public static Result<FFmpegResult, String>
+    clipLastGOP(@NotNull JsonObject startFrameData, @NotNull FFmpeg videoData, UrlOutput urlOutput) {
+        Function<String, FFmpeg> buildGOPAction = startFrameTime -> videoData
                 .addArguments("-ss", startFrameTime)
                 .addOutput(urlOutput);
-        return VideoWrite.handleGOPExecution(GOPDataAction);
+        return calcStartFrameData(startFrameData)
+                .then(onSuccess(buildGOPAction))
+                .then(attempt(VideoWrite::handleGOPExecution))
+                .resolve();
     }
+
+
 
     /**
      * @param frameList ...
@@ -92,27 +108,43 @@ public class VideoWrite {
      * @param urlOutput ...
      * @return ...
      */
-    public static Result<FFmpegResult, String>
+    public static @NotNull Result<FFmpegResult, String>
     clipGOP(@NotNull JsonArray frameList,
             Integer nextIFrame,
             @NotNull JsonObject startFrameData,
             @NotNull FFmpeg videoData,
             UrlOutput urlOutput) {
-        JsonObject endFrameData = (JsonObject) frameList.get(nextIFrame);
-        String startFrameRawTime = (String) startFrameData.get(getTimeAccessor());
-        var offset = 70;
-        var possibleStartTime = (1000 * Float.parseFloat(startFrameRawTime) - offset);
-        String endFrameRawTime = (String) endFrameData.get(getTimeAccessor());
-        var endTime = (int) (1000 * Float.parseFloat(endFrameRawTime));
-        var startFrameTime = Math.max((int) possibleStartTime, 0) + "ms";
-        var endFrameTime = endTime + "ms";
-        var extractGOP = videoData
-                .addArguments("-ss", startFrameTime)
-                .addArguments("-to", endFrameTime)
+        var startFrameTime = calcStartFrameData(startFrameData);
+
+        var endFrameTime = pipe(frameList)
+                .then(frameJsonList -> frameJsonList.get(nextIFrame))
+                .then(castTo(JsonObject.class))
+                .then(onSuccess(endFrameData -> endFrameData.get(getTimeAccessor())))
+                .then(attempt(castTo(String.class)))
+                .then(onSuccess(endRawTime -> 1000 * Float.parseFloat(endRawTime)))
+                .then(onSuccess(endTimeFloat -> Math.round(endTimeFloat) + "ms"))
+                .then(onFailure(__ -> "End frame casting failure!"))
+                .resolve();
+        BiFunction<String, String, FFmpeg> buildGOPDataAction = (startTime, endTime) -> videoData
+                .addArguments("-ss", startTime)
+                .addArguments("-to", endTime)
                 .addArguments("-c:v", "copy")
                 .addArguments("-c:a", "copy")
                 .addOutput(urlOutput);
-        return VideoWrite.handleGOPExecution(extractGOP);
+
+//        var GOPDataAction = startFrameTime
+//                .then(combineWith(endFrameTime))
+//                .using(buildGOPDataAction)
+//                .then(onFailure(__ -> ""))
+//                ;
+//        return GOPDataAction
+//                .then(attempt(VideoWrite::handleGOPExecution))
+
+
+//                .then(onFailure(castTo(String.class)))
+//                .then(onFailure(i -> (String) i))
+                ;
+                return Result.failure("rippppp");
     }
 
     public static @NotNull Result<File, ResponseEntity<Object>>
