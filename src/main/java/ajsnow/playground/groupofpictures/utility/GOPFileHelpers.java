@@ -1,6 +1,7 @@
 package ajsnow.playground.groupofpictures.utility;
 
 import ajsnow.playground.groupofpictures.utility.rop.result.Result;
+import ajsnow.playground.groupofpictures.utility.rop.wrappers.Piper;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 
@@ -27,11 +28,10 @@ public class GOPFileHelpers {
         };
     }
 
-    public static Result<Path, String> handleCreatingDirectory(@NotNull Path desiredDirectory) {
+    public static Piper<Result<Path, String>> handleCreatingDirectory(@NotNull Path desiredDirectory) {
         Function<Exception, String> recordException =
                 ex -> "Couldn't create a directory! Error: " + ex.getMessage();
         return pipe(desiredDirectory)
-                .then(tryTo(Files::createDirectories, recordException))
-                .resolve();
+                .then(tryTo(Files::createDirectories, recordException));
     }
 }
