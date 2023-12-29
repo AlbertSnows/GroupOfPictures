@@ -2,12 +2,11 @@ package ajsnow.playground.groupofpictures.services.video;
 
 import ajsnow.playground.groupofpictures.data.VideoSource;
 import ajsnow.playground.groupofpictures.utility.rop.result.Result;
+import ajsnow.playground.groupofpictures.utility.rop.wrappers.Piper;
 import com.github.kokorin.jaffree.ffprobe.FFprobe;
 import com.grack.nanojson.JsonArray;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.io.ByteArrayResource;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
@@ -15,6 +14,9 @@ import java.io.FileInputStream;
 import java.nio.file.Files;
 
 import static ajsnow.playground.groupofpictures.data.Constants.SOURCE_PATH;
+import static ajsnow.playground.groupofpictures.utility.rop.result.Introducers.tryTo;
+import static ajsnow.playground.groupofpictures.utility.rop.result.Transformers.*;
+import static ajsnow.playground.groupofpictures.utility.rop.wrappers.Piper.pipe;
 
 @Service
 public class VideoRead {
@@ -30,21 +32,20 @@ public class VideoRead {
      * @return file data
      */
     public static @NotNull Result<JsonArray, String> getFrameDataForVideo(String name) {
-        try (var fileInputStream = new FileInputStream(SOURCE_PATH + "CoolVideo.mp4")){
-            var videoProbe = FFprobe.atPath().setInput(fileInputStream);
-            var frameData = videoProbe.setShowFrames(true).execute();
-            return Result.success((JsonArray) frameData.getData().getValue("frames"));
-        } catch (Exception e) {
-            return Result.failure("File not found probably. Error: " + e.getCause());
-        }
+        return pipe(SOURCE_PATH + name)
+                .then(tryTo(FileInputStream::new, ex -> "Could not open file stream! Cause: " + ex.getMessage()))
+                .then(onSuccess(fileStream -> FFprobe.atPath().setInput(fileStream)))
+                .then(attempt(tryTo(
+                        probe -> probe.setShowFrames(true).execute(),
+                        ex -> "Error executing ffmpeg command. Error: " + ex.getCause())))
+                .then(onSuccess(frameData -> frameData.getData().getValue("frames")))
+                //todo: fix this weird casting thing
+                .then(onSuccess(i -> (JsonArray) i))
+                .resolve();
     }
 
-    public static @NotNull Result<ByteArrayResource, ResponseEntity<String>> tryReadingVideo(File clipFile) {
-        try {
-            var videoBytes = Files.readAllBytes(clipFile.toPath());
-            return Result.success(new ByteArrayResource(videoBytes));
-        } catch (Exception ex) {
-            return Result.failure(ResponseEntity.internalServerError().body("Problem sending response: " + ex.getMessage()));
-        }
+    public static Piper<Result<byte[], String>> tryReadingVideo(@NotNull File clipFile) {
+        return pipe(clipFile.toPath())
+                .then(tryTo(Files::readAllBytes, ex -> "Problem reading bytes: " + ex.getMessage()));
     }
 }
