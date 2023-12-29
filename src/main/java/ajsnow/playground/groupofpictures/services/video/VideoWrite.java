@@ -38,6 +38,9 @@ import static ajsnow.playground.groupofpictures.utility.rop.wrappers.Piper.pipe;
 
 @Service
 public class VideoWrite {
+    /**
+     * @return ...
+     */
     // bonus: this should not be necessary, would need to figure out dev configs
     // bonus: add formal logging system
     public static @NotNull String getTimeAccessor() {
@@ -45,6 +48,10 @@ public class VideoWrite {
         return os.contains("win") ? "pts_time" : "pkt_pts_time";
     }
 
+    /**
+     * @param extractGOP ...
+     * @return ...
+     */
     public static Result<FFmpegResult, String> handleGOPExecution(FFmpeg extractGOP) {
         Function<Exception, String> log_failure = (Exception ex) -> {
             var message = "Creation error! Error: " + ex.getMessage();
@@ -56,6 +63,12 @@ public class VideoWrite {
                 .resolve();
     }
 
+    /**
+     * @param startFrameData ...
+     * @param videoData ...
+     * @param urlOutput ...
+     * @return ...
+     */
     public static Result<FFmpegResult, String> clipLastGOP(@NotNull JsonObject startFrameData,
                                                            @NotNull FFmpeg videoData,
                                                            UrlOutput urlOutput) {
@@ -69,14 +82,22 @@ public class VideoWrite {
                 .addArguments("-ss", startFrameTime)
                 .addOutput(urlOutput);
         return VideoWrite.handleGOPExecution(GOPDataAction);
-
     }
 
-    public static void clipGOP(@NotNull JsonArray frameList,
-                               Integer nextIFrame,
-                               @NotNull JsonObject startFrameData,
-                               @NotNull FFmpeg videoData,
-                               UrlOutput urlOutput) {
+    /**
+     * @param frameList ...
+     * @param nextIFrame ...
+     * @param startFrameData ...
+     * @param videoData ...
+     * @param urlOutput ...
+     * @return ...
+     */
+    public static Result<FFmpegResult, String>
+    clipGOP(@NotNull JsonArray frameList,
+            Integer nextIFrame,
+            @NotNull JsonObject startFrameData,
+            @NotNull FFmpeg videoData,
+            UrlOutput urlOutput) {
         JsonObject endFrameData = (JsonObject) frameList.get(nextIFrame);
         String startFrameRawTime = (String) startFrameData.get(getTimeAccessor());
         var offset = 70;
@@ -91,11 +112,7 @@ public class VideoWrite {
                 .addArguments("-c:v", "copy")
                 .addArguments("-c:a", "copy")
                 .addOutput(urlOutput);
-        try {
-            extractGOP.execute();
-        } catch(Exception ex) {
-            System.out.println("Creation error! Error: " + ex.getMessage());
-        }
+        return VideoWrite.handleGOPExecution(extractGOP);
     }
 
     public static @NotNull Result<File, ResponseEntity<Object>>
