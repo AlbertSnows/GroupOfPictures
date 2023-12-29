@@ -71,7 +71,7 @@ public class VideoWrite {
      * @param startFrameData ...
      * @return ...
      */
-    static Piper<Result<String, String>> calcStartFrameData(JsonObject startFrameData) {
+    static Piper<Result<String, String>> calcStartFrameTime(JsonObject startFrameData) {
         return pipe(startFrameData)
                 .then(startFrameJson -> startFrameJson.get(getTimeAccessor()))
                 .then(castTo(String.class))
@@ -92,7 +92,7 @@ public class VideoWrite {
         Function<String, FFmpeg> buildGOPAction = startFrameTime -> videoData
                 .addArguments("-ss", startFrameTime)
                 .addOutput(urlOutput);
-        return calcStartFrameData(startFrameData)
+        return calcStartFrameTime(startFrameData)
                 .then(onSuccess(buildGOPAction))
                 .then(attempt(VideoWrite::handleGOPExecution))
                 .resolve();
@@ -114,8 +114,12 @@ public class VideoWrite {
             @NotNull JsonObject startFrameData,
             @NotNull FFmpeg videoData,
             UrlOutput urlOutput) {
-        var startFrameTime = calcStartFrameData(startFrameData);
-
+        BiFunction<String, String, FFmpeg> buildGOPDataAction = (startTime, endTime) -> videoData
+                .addArguments("-ss", startTime)
+                .addArguments("-to", endTime)
+                .addArguments("-c:v", "copy")
+                .addArguments("-c:a", "copy")
+                .addOutput(urlOutput);
         var endFrameTime = pipe(frameList)
                 .then(frameJsonList -> frameJsonList.get(nextIFrame))
                 .then(castTo(JsonObject.class))
@@ -125,26 +129,11 @@ public class VideoWrite {
                 .then(onSuccess(endTimeFloat -> Math.round(endTimeFloat) + "ms"))
                 .then(onFailure(__ -> "End frame casting failure!"))
                 .resolve();
-        BiFunction<String, String, FFmpeg> buildGOPDataAction = (startTime, endTime) -> videoData
-                .addArguments("-ss", startTime)
-                .addArguments("-to", endTime)
-                .addArguments("-c:v", "copy")
-                .addArguments("-c:a", "copy")
-                .addOutput(urlOutput);
-
-//        var GOPDataAction = startFrameTime
-//                .then(combineWith(endFrameTime))
-//                .using(buildGOPDataAction)
-//                .then(onFailure(__ -> ""))
-//                ;
-//        return GOPDataAction
-//                .then(attempt(VideoWrite::handleGOPExecution))
-
-
-//                .then(onFailure(castTo(String.class)))
-//                .then(onFailure(i -> (String) i))
-                ;
-                return Result.failure("rippppp");
+        return calcStartFrameTime(startFrameData)
+                .resolve()
+                .then(combineWith(endFrameTime))
+                .using(buildGOPDataAction)
+                .then(attempt(VideoWrite::handleGOPExecution));
     }
 
     public static @NotNull Result<File, ResponseEntity<Object>>
