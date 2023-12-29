@@ -76,9 +76,10 @@ public class VideoController {
     public String getFramesAsVideos(
             @PathVariable("videoName") String name,
             @NotNull Model model) {
-        var escapedName = StringEscapeUtils.escapeJava(name);
-        var sourceVideoLocation = Path.of(SOURCE_PATH + escapedName);
-        var output = VideoWrite.tryClippingVideos(escapedName, sourceVideoLocation, model);
-        return output.then(collapse());
+        return pipe(name)
+                .then(StringEscapeUtils::escapeJava)
+                .then(escapedName -> VideoWrite.tryClippingVideos(escapedName, model))
+                .then(collapse())
+                .resolve();
     }
 }

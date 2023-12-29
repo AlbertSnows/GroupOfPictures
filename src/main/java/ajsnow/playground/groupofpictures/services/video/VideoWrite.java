@@ -213,7 +213,8 @@ public class VideoWrite {
 
     @Contract(pure = true)
     public static @NotNull Result<String, String>
-    tryClippingVideos(String escapedName, Path sourceVideoLocation, Model model) {
+    tryClippingVideos(String escapedName, Model model) {
+        var sourceVideoLocation = Path.of(SOURCE_PATH + escapedName);
         var fileExists = Files.exists(sourceVideoLocation);
         if(!fileExists) {
             model.addAttribute("errorMessage", "Requested video doesn't exist!");
