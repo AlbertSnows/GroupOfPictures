@@ -33,6 +33,7 @@ import static ajsnow.playground.groupofpictures.data.Constants.*;
 import static ajsnow.playground.groupofpictures.utility.rop.result.Combiners.combineWith;
 import static ajsnow.playground.groupofpictures.utility.rop.result.Introducers.*;
 import static ajsnow.playground.groupofpictures.utility.rop.result.Transformers.*;
+import static ajsnow.playground.groupofpictures.utility.rop.result.TypeOf.using;
 import static ajsnow.playground.groupofpictures.utility.rop.wrappers.Piper.pipe;
 
 @Service
@@ -150,8 +151,8 @@ public class VideoWrite {
         };
     }
 
-    public static @NotNull Result<File, String>
-    tryClippingVideo(@NotNull String escapedName, @NotNull String escapedIndex) {
+    private static Result<HashMap<String, Object>, String>
+    collectVideoData(@NotNull String escapedName, @NotNull String escapedIndex) {
         var sourceVideoLocation = SOURCE_PATH + escapedName;
         var frameListResult = pipe(sourceVideoLocation)
                 .then(RoutingCore::handleFileNotFound).resolve()
@@ -180,27 +181,37 @@ public class VideoWrite {
                         .filter(isIFrame.apply(pair.left()))
                         .boxed()
                         .collect(Collectors.toCollection(TreeSet::new))));
-        var start = Integer.parseInt(escapedIndex.split("\\.mp4")[0]);
-        var clipFilePath = pipe(STATIC_PATH + videoNameWithoutExtension +"/" + escapedIndex)
-                .then(String::format).resolve(); // to be returned
-        var rolledSet = clipPathAsStringResult
+        return clipPathAsStringResult
                 .then(onSuccess(newDirPath -> new HashMap<String, Object>(Map.of("clipPathAsString", newDirPath))))
                 .then(combineWith(iFrameIndexResults))
                 .using((indexes, map) -> { map.put("iFrameIndexes", indexes); return map; })
                 .then(combineWith(frameListResult))
                 .using((frameList, map) -> { map.put("frameList", frameList); return map; });
-        return rolledSet
+    }
+
+    public static @NotNull Result<File, String>
+    tryClippingVideo(@NotNull String escapedName, @NotNull String escapedIndex) {
+        var videoData = collectVideoData(escapedName, escapedIndex);
+        var start = Integer.parseInt(escapedIndex.split("\\.mp4")[0]);
+
+        return videoData
+                .then(onSuccess(map -> {
+                    var clipFilePath = pipe(STATIC_PATH + map.get("videoNameWithoutExtension") +"/" + escapedIndex)
+                            .then(String::format).resolve();
+                    map.put("clipFilePath", clipFilePath);
+                    return map;
+                }))
                 .then(attempt(ifFalse(map -> {
                     TreeSet<Integer> indexes = (TreeSet<Integer>) map.get("iFrameIndexes");
                     return !indexes.contains(start);
                 }, "Index not found!")))
                 .then(onSuccessDo(m -> writeClipByIFrame(
-                        Path.of(sourceVideoLocation),
+                        Path.of((String) m.get("sourceVideoLocation")),
                         (TreeSet<Integer>) m.get("iFrameIndexes"),
                         (JsonArray) m.get("frameList"))
                         .apply(start)
                         .accept((String) m.get("clipPathAsString"))))
-                .then(onSuccess(__ -> new File(clipFilePath)))
+                .then(onSuccess(m -> new File((String) m.get("clipFilePath"))))
                 .then(attempt(ifFalse(
                         File::exists,
                         __ -> "Couldn't find clip file after creation!")));
@@ -259,6 +270,9 @@ public class VideoWrite {
 
         var clipFile = frameListWithFrameIndexes
                 .then(onSuccess(pair -> writeClipByIFrame(Path.of(sourceVideoLocation), iFrameIndexResults, pair.left())));
+        var clipFilePath = pipe(STATIC_PATH + videoNameWithoutExtension +"/" + escapedIndex)
+                .then(String::format).resolve();
+
         return sourceExistsResult.resolve()
                 .then(onSuccess(__ -> createdDirectoryResult.resolve()))
                 .then(onSuccess(__ -> iFrameIndexes))
