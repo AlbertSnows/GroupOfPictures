@@ -227,7 +227,7 @@ public class VideoWrite {
         var videoNameWithoutExtension = escapedName.split("\\.mp4")[0];
         var fullDir = Path.of(getHTMLPath() + videoNameWithoutExtension);
         var videoData = collectVideoData(escapedName, fullDir);
-        var clipFile = videoData
+        return videoData
                 .then(onSuccess(map -> {
                     var function = writeClipByIFrame(
                             Path.of(sourceVideoLocation),
@@ -250,16 +250,14 @@ public class VideoWrite {
                     iFrameIndexes.forEach(startIFrame -> {
                         // clipFunction
                         var clipPathAsString = String.format(getHTMLPath() + videoNameWithoutExtension + "/%d.mp4", startIFrame);
-                        clipFile.apply(startIFrame).accept(clipPathAsString);
-                        model.addAllAttributes(Map.of("clipFileNames", clipNames, "videoFileNames", videoNameWithoutExtension));
+                        ((Function<Integer, Consumer<String>>) map.get("clipFile")).apply(startIFrame).accept(clipPathAsString);
+                        model.addAllAttributes(Map.of("clipFileNames", map.get("clipNames"), "videoFileNames", videoNameWithoutExtension));
                     });
-                    return frames;
                 }))
                 .then(onSuccess(__ -> "video_sequence"))
                 .then(onFailure(errorMessage -> {
                     model.addAttribute("errorMessage", errorMessage);
                     return "error";
                 }));
-        return clipFile;
     }
 }
