@@ -4,7 +4,6 @@ import ajsnow.playground.groupofpictures.services.routing.RoutingCore;
 import ajsnow.playground.groupofpictures.utility.GOPFileHelpers;
 import ajsnow.playground.groupofpictures.utility.rop.pair.Pair;
 import ajsnow.playground.groupofpictures.utility.rop.result.Result;
-import ajsnow.playground.groupofpictures.utility.rop.result.TypeOf;
 import ajsnow.playground.groupofpictures.utility.rop.wrappers.Piper;
 import com.github.kokorin.jaffree.ffmpeg.FFmpeg;
 import com.github.kokorin.jaffree.ffmpeg.FFmpegResult;
@@ -14,11 +13,8 @@ import com.github.kokorin.jaffree.ffprobe.FFprobe;
 import com.github.kokorin.jaffree.ffprobe.FFprobeResult;
 import com.grack.nanojson.JsonArray;
 import com.grack.nanojson.JsonObject;
-import org.apache.coyote.Response;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.ui.Model;
 
@@ -36,10 +32,7 @@ import java.util.stream.IntStream;
 import static ajsnow.playground.groupofpictures.data.Constants.*;
 import static ajsnow.playground.groupofpictures.utility.rop.result.Combiners.combineWith;
 import static ajsnow.playground.groupofpictures.utility.rop.result.Introducers.*;
-import static ajsnow.playground.groupofpictures.utility.rop.result.Resolvers.collapse;
-import static ajsnow.playground.groupofpictures.utility.rop.result.Resolvers.collapseToBoolean;
 import static ajsnow.playground.groupofpictures.utility.rop.result.Transformers.*;
-import static ajsnow.playground.groupofpictures.utility.rop.result.TypeOf.using;
 import static ajsnow.playground.groupofpictures.utility.rop.wrappers.Piper.pipe;
 
 @Service
