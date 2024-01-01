@@ -10,10 +10,8 @@ import com.github.kokorin.jaffree.ffmpeg.FFmpegResult;
 import com.github.kokorin.jaffree.ffmpeg.UrlInput;
 import com.github.kokorin.jaffree.ffmpeg.UrlOutput;
 import com.github.kokorin.jaffree.ffprobe.FFprobe;
-import com.github.kokorin.jaffree.ffprobe.FFprobeResult;
 import com.grack.nanojson.JsonArray;
 import com.grack.nanojson.JsonObject;
-import com.sun.source.util.Trees;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.stereotype.Service;
@@ -22,7 +20,10 @@ import org.springframework.ui.Model;
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.TreeSet;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -34,7 +35,6 @@ import static ajsnow.playground.groupofpictures.data.Constants.*;
 import static ajsnow.playground.groupofpictures.utility.rop.result.Combiners.combineWith;
 import static ajsnow.playground.groupofpictures.utility.rop.result.Introducers.*;
 import static ajsnow.playground.groupofpictures.utility.rop.result.Transformers.*;
-import static ajsnow.playground.groupofpictures.utility.rop.result.TypeOf.using;
 import static ajsnow.playground.groupofpictures.utility.rop.wrappers.Piper.pipe;
 
 @Service
@@ -59,9 +59,10 @@ public class VideoWrite {
             System.out.println(message);
             return message;
         };
-        return pipe(extractGOP)
+        var output = pipe(extractGOP)
                 .then(tryTo(FFmpeg::execute, log_failure))
                 .resolve();
+        return output;
     }
 
     /**
@@ -111,7 +112,7 @@ public class VideoWrite {
             UrlOutput urlOutput,
             @NotNull JsonArray frameList,
             Integer nextIFrame) {
-        BiFunction<String, String, FFmpeg> buildGOPDataAction = (startTime, endTime) -> videoData
+        BiFunction<String, String, FFmpeg> buildGOPDataAction = (endTime, startTime) -> videoData
                 .addArguments("-ss", startTime)
                 .addArguments("-to", endTime)
                 .addArguments("-c:v", "copy")
@@ -126,11 +127,12 @@ public class VideoWrite {
                 .then(onSuccess(endTimeFloat -> Math.round(endTimeFloat) + "ms"))
                 .then(onFailure(__ -> "End frame casting failure!"))
                 .resolve();
-        return calcStartFrameTime(startFrameData)
+        var output = calcStartFrameTime(startFrameData)
                 .resolve()
                 .then(combineWith(endFrameTime))
                 .using(buildGOPDataAction)
                 .then(attempt(VideoWrite::handleGOPExecution));
+        return output;
     }
 
 
@@ -145,7 +147,7 @@ public class VideoWrite {
             var endIFrame = iFrameIndexes.higher(startIFrame);
             var startFrameData = (JsonObject) frameList.get(startIFrame);
             pipe(startIFrame)
-                    .then(ifNull(iFrameIndexes::higher, null))
+                    .then(ifNull(iFrameIndexes::higher, __ -> null))
                     .then(onSuccessDo(__ -> VideoWrite.clipGOP(startFrameData, videoData, outputPathForClip, frameList, endIFrame)))
                     .then(onFailureDo(__ -> VideoWrite.clipLastGOP(startFrameData, videoData, outputPathForClip)))
                     .resolve();
@@ -190,14 +192,13 @@ public class VideoWrite {
         var sourceVideoLocation = SOURCE_PATH + escapedName;
         var videoNameWithoutExtension = escapedName.split("\\.mp4")[0];
         var path = Path.of(STATIC_PATH + videoNameWithoutExtension);
-        var videoData = collectVideoData(escapedName, path)
+        var start = Integer.parseInt(escapedIndex.split("\\.mp4")[0]);
+        var videoData = collectVideoData(sourceVideoLocation, path)
                 .then(onSuccess(m -> {
-                    var clipFilePath = ((Path) m.get("clipFilePath")).toString() + "/" + escapedIndex;
+                    var clipFilePath = ((Path) m.get("clipFilePath")).toString() + "\\" + escapedIndex;
                     m.put("clipFilePathAsString", clipFilePath);
                     return m;
-                }));
-        var start = Integer.parseInt(escapedIndex.split("\\.mp4")[0]);
-        return videoData
+                }))
                 .then(onSuccess(map -> {
                     var clipFilePath = pipe(STATIC_PATH + videoNameWithoutExtension +"/" + escapedIndex)
                             .then(String::format).resolve();
@@ -206,7 +207,7 @@ public class VideoWrite {
                 }))
                 .then(attempt(ifFalse(map -> {
                     TreeSet<Integer> indexes = (TreeSet<Integer>) map.get("iFrameIndexes");
-                    return !indexes.contains(start);
+                    return indexes.contains(start);
                 }, "Index not found!")))
                 .then(onSuccessDo(m -> writeClipByIFrame(
                         Path.of(sourceVideoLocation),
@@ -218,6 +219,7 @@ public class VideoWrite {
                 .then(attempt(ifFalse(
                         File::exists,
                         __ -> "Couldn't find clip file after creation!")));
+        return videoData;
     }
 
     @Contract(pure = true)
@@ -226,7 +228,7 @@ public class VideoWrite {
         var sourceVideoLocation = SOURCE_PATH + escapedName; //todo:
         var videoNameWithoutExtension = escapedName.split("\\.mp4")[0];
         var fullDir = Path.of(getHTMLPath() + videoNameWithoutExtension);
-        var videoData = collectVideoData(escapedName, fullDir);
+        var videoData = collectVideoData(sourceVideoLocation, fullDir);
         return videoData
                 .then(onSuccess(map -> {
                     var function = writeClipByIFrame(
@@ -250,8 +252,8 @@ public class VideoWrite {
                     iFrameIndexes.forEach(startIFrame -> {
                         // clipFunction
                         var clipPathAsString = String.format(getHTMLPath() + videoNameWithoutExtension + "/%d.mp4", startIFrame);
-                        ((Function<Integer, Consumer<String>>) map.get("clipFile")).apply(startIFrame).accept(clipPathAsString);
-                        model.addAllAttributes(Map.of("clipFileNames", map.get("clipNames"), "videoFileNames", videoNameWithoutExtension));
+                        ((Function<Integer, Consumer<String>>) map.get("clipFunction")).apply(startIFrame).accept(clipPathAsString);
+                        model.addAllAttributes(Map.of("clipFileNames", map.get("clipNames"), "videoFileName", videoNameWithoutExtension));
                     });
                 }))
                 .then(onSuccess(__ -> "video_sequence"))
