@@ -27,6 +27,7 @@ public interface Combiners {
      * @return dF(x -> mergableResult) to use using on to get (LS, RS) -> ...
      * If either or both arguments are Failures, then this returns the first failure
      * it encountered.
+     * typically used in the form X.then(combineWith(Y).using((X, Y) -> <combine mechanism here>))
      */
     @org.jetbrains.annotations.NotNull
     @org.jetbrains.annotations.Contract(pure = true)
