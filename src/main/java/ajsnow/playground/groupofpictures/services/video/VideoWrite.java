@@ -13,6 +13,7 @@ import com.github.kokorin.jaffree.ffprobe.FFprobe;
 import com.github.kokorin.jaffree.ffprobe.FFprobeResult;
 import com.grack.nanojson.JsonArray;
 import com.grack.nanojson.JsonObject;
+import com.sun.source.util.Trees;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.stereotype.Service;
@@ -152,8 +153,7 @@ public class VideoWrite {
     }
 
     private static Result<HashMap<String, Object>, String>
-    collectVideoData(@NotNull String escapedName, @NotNull String escapedIndex) {
-        var sourceVideoLocation = SOURCE_PATH + escapedName;
+    collectVideoData(@NotNull String sourceVideoLocation, @NotNull Path fullDir) {
         var frameListResult = pipe(sourceVideoLocation)
                 .then(RoutingCore::handleFileNotFound).resolve()
                 .then(onSuccess(location -> FFprobe.atPath().setInput(location)))
@@ -162,11 +162,7 @@ public class VideoWrite {
                 .then(onSuccess(innerFrameList -> (JsonArray) innerFrameList))
                 .then(onFailure(__ -> "Failed to cast"))
                 .resolve();
-        var videoNameWithoutExtension = escapedName.split("\\.mp4")[0];
-        var clipPathAsStringResult = GOPFileHelpers
-                .handleCreatingDirectory(Path.of(STATIC_PATH + videoNameWithoutExtension)).resolve()
-                .then(onSuccess(Path::toString))
-                .then(onSuccess(dir -> dir + "/" + escapedIndex));
+        var createDirOutcome = GOPFileHelpers.handleCreatingDirectory(fullDir).resolve();
         Function<JsonArray, IntPredicate> isIFrame = frameList -> frameIndex -> {
             var frameData = (JsonObject) frameList.get(frameIndex);
             return frameData.get("pict_type").equals("I");
@@ -181,8 +177,8 @@ public class VideoWrite {
                         .filter(isIFrame.apply(pair.left()))
                         .boxed()
                         .collect(Collectors.toCollection(TreeSet::new))));
-        return clipPathAsStringResult
-                .then(onSuccess(newDirPath -> new HashMap<String, Object>(Map.of("clipPathAsString", newDirPath))))
+        return createDirOutcome
+                .then(onSuccess(newDirPath -> new HashMap<String, Object>(Map.of("clipFilePath", newDirPath))))
                 .then(combineWith(iFrameIndexResults))
                 .using((indexes, map) -> { map.put("iFrameIndexes", indexes); return map; })
                 .then(combineWith(frameListResult))
@@ -191,12 +187,19 @@ public class VideoWrite {
 
     public static @NotNull Result<File, String>
     tryClippingVideo(@NotNull String escapedName, @NotNull String escapedIndex) {
-        var videoData = collectVideoData(escapedName, escapedIndex);
+        var sourceVideoLocation = SOURCE_PATH + escapedName;
+        var videoNameWithoutExtension = escapedName.split("\\.mp4")[0];
+        var path = Path.of(STATIC_PATH + videoNameWithoutExtension);
+        var videoData = collectVideoData(escapedName, path)
+                .then(onSuccess(m -> {
+                    var clipFilePath = ((Path) m.get("clipFilePath")).toString() + "/" + escapedIndex;
+                    m.put("clipFilePathAsString", clipFilePath);
+                    return m;
+                }));
         var start = Integer.parseInt(escapedIndex.split("\\.mp4")[0]);
-
         return videoData
                 .then(onSuccess(map -> {
-                    var clipFilePath = pipe(STATIC_PATH + map.get("videoNameWithoutExtension") +"/" + escapedIndex)
+                    var clipFilePath = pipe(STATIC_PATH + videoNameWithoutExtension +"/" + escapedIndex)
                             .then(String::format).resolve();
                     map.put("clipFilePath", clipFilePath);
                     return map;
@@ -206,11 +209,11 @@ public class VideoWrite {
                     return !indexes.contains(start);
                 }, "Index not found!")))
                 .then(onSuccessDo(m -> writeClipByIFrame(
-                        Path.of((String) m.get("sourceVideoLocation")),
+                        Path.of(sourceVideoLocation),
                         (TreeSet<Integer>) m.get("iFrameIndexes"),
                         (JsonArray) m.get("frameList"))
                         .apply(start)
-                        .accept((String) m.get("clipPathAsString"))))
+                        .accept((String) m.get("clipFilePathAsString"))))
                 .then(onSuccess(m -> new File((String) m.get("clipFilePath"))))
                 .then(attempt(ifFalse(
                         File::exists,
@@ -220,70 +223,43 @@ public class VideoWrite {
     @Contract(pure = true)
     public static @NotNull Result<String, String>
     tryClippingVideos(@NotNull String escapedName, @NotNull Model model) {
-        var sourceVideoLocation = SOURCE_PATH + escapedName;
-        var frameListResult = pipe(sourceVideoLocation)
-                .then(RoutingCore::handleFileNotFound).resolve()
-                .then(onSuccess(location -> FFprobe.atPath().setInput(location)))
-                .then(onSuccess(probe -> probe.setShowFrames(true).execute()))
-                .then(onSuccess(FFprobeResult::getData))
-                .then(onSuccess(data -> data.getValue("frames")))
-                .then(onSuccess(list -> (JsonArray) list))
-                .resolve();
-        Function<JsonArray, IntPredicate> isIFrame = frameList -> frameIndex -> {
-            var frameData = (JsonObject) frameList.get(frameIndex);
-            return frameData.get("pict_type").equals("I");
-        };
+        var sourceVideoLocation = SOURCE_PATH + escapedName; //todo:
         var videoNameWithoutExtension = escapedName.split("\\.mp4")[0];
-        var frameIndexes = frameListResult
-                .then(onSuccess(frameList -> IntStream.rangeClosed(0, frameList.size()-1)));
-        var frameListWithFrameIndexes = frameIndexes
-                .then(combineWith(frameListResult))
-                .using(Pair::of);
-        var iFrameIndexResults = frameListWithFrameIndexes
-                .then(onSuccess(pair -> pair.right().filter(isIFrame.apply(pair.left()))
-                        .filter(isIFrame.apply(pair.left()))
-                        .boxed()
-                        .collect(Collectors.toCollection(TreeSet::new))));
-        var clipNames = iFrameIndexResults
-                .then(onSuccess(iFrameIndexes -> iFrameIndexes.stream()
-                        .map(index -> index + ".mp4")
-                        .toList()))
-                .then(onSuccess(ArrayList::new));;
-        var sourceExistsResult = pipe(sourceVideoLocation)
-                .then(ifFalse(source -> Files.exists(Path.of(source)), __ -> {
-                    model.addAttribute("errorMessage", "Requested video doesn't exist!");
-                    return "error";
-                }));
-        //todo: abstract static path
-        var createdDirectoryResult = GOPFileHelpers
-                .handleCreatingDirectory(Path.of(getHTMLPath() + videoNameWithoutExtension))
-                .then(onFailure(directoryError -> {
-                    model.addAttribute("errorMessage", directoryError);
-                    return "error";
-                }));
-        var rolledSet = clipPathAsStringResult
-                .then(onSuccess(newDirPath -> new HashMap<String, Object>(Map.of("clipPathAsString", newDirPath))))
-                .then(combineWith(iFrameIndexResults))
-                .using((indexes, map) -> { map.put("iFrameIndexes", indexes); return map; })
-                .then(combineWith(frameListResult))
-                .using((frameList, map) -> { map.put("frameList", frameList); return map; });
-
-        var clipFile = frameListWithFrameIndexes
-                .then(onSuccess(pair -> writeClipByIFrame(Path.of(sourceVideoLocation), iFrameIndexResults, pair.left())));
-        var clipFilePath = pipe(STATIC_PATH + videoNameWithoutExtension +"/" + escapedIndex)
-                .then(String::format).resolve();
-
-        return sourceExistsResult.resolve()
-                .then(onSuccess(__ -> createdDirectoryResult.resolve()))
-                .then(onSuccess(__ -> iFrameIndexes))
-                .then(onSuccess(frames -> {
-                    frames.forEach(startIFrame -> {
+        var fullDir = Path.of(getHTMLPath() + videoNameWithoutExtension);
+        var videoData = collectVideoData(escapedName, fullDir);
+        var clipFile = videoData
+                .then(onSuccess(map -> {
+                    var function = writeClipByIFrame(
+                            Path.of(sourceVideoLocation),
+                            (TreeSet<Integer>) map.get("iFrameIndexes"),
+                            (JsonArray) map.get("frameList"));
+                    map.put("clipFunction", function);
+                    return map;
+                }))
+                .then(attempt(ifFalse(__ -> Files.exists(Path.of(sourceVideoLocation)),
+                        __ -> "Requested video doesn't exist!")))
+                .then(onSuccess(map -> {
+                    var clipFileNames = ((TreeSet<Integer>) map.get("iFrameIndexes")).stream()
+                            .map(index -> index + ".mp4")
+                            .toList();
+                    map.put("clipNames", new ArrayList<>(clipFileNames));
+                    return map;
+                }))
+                .then(onSuccessDo(map -> {
+                    var iFrameIndexes = (TreeSet<Integer>) map.get("iFrameIndexes");
+                    iFrameIndexes.forEach(startIFrame -> {
+                        // clipFunction
                         var clipPathAsString = String.format(getHTMLPath() + videoNameWithoutExtension + "/%d.mp4", startIFrame);
                         clipFile.apply(startIFrame).accept(clipPathAsString);
                         model.addAllAttributes(Map.of("clipFileNames", clipNames, "videoFileNames", videoNameWithoutExtension));
                     });
                     return frames;
                 }))
-                .then(onSuccess(__ -> "video_sequence"));
+                .then(onSuccess(__ -> "video_sequence"))
+                .then(onFailure(errorMessage -> {
+                    model.addAttribute("errorMessage", errorMessage);
+                    return "error";
+                }));
+        return clipFile;
     }
 }
